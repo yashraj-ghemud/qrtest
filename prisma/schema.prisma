@@ -1,0 +1,65 @@
+// Prisma schema for QRcraft — analytics + conversation memory
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+// QR codes that have analytics tracking enabled
+model TrackedQR {
+  id         String   @id @default(cuid())
+  shortCode  String   @unique @default(cuid())
+  content    String
+  category   String
+  label      String?
+  createdAt  DateTime @default(now())
+
+  scans      Scan[]
+
+  @@index([shortCode])
+}
+
+// Scan events
+model Scan {
+  id          String   @id @default(cuid())
+  qrId        String
+  userAgent   String?
+  referer     String?
+  ip          String?
+  country     String?
+  city        String?
+  deviceType  String? // mobile / desktop / tablet
+  createdAt   DateTime @default(now())
+
+  qr          TrackedQR @relation(fields: [qrId], references: [id], onDelete: Cascade)
+
+  @@index([qrId])
+  @@index([createdAt])
+}
+
+// Conversation memory for AI assistant
+model Conversation {
+  id         String   @id @default(cuid())
+  sessionId  String   @unique
+  title      String?
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  messages   Message[]
+}
+
+model Message {
+  id              String   @id @default(cuid())
+  conversationId  String
+  role            String   // user | assistant | system
+  content         String
+  metaJson        String?  // JSON-encoded structured data (suggested QR config etc)
+  createdAt       DateTime @default(now())
+
+  conversation    Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+
+  @@index([conversationId])
+}

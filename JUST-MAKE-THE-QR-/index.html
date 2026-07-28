@@ -1,0 +1,5025 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="description"
+        content="QRcraft is a creative, cinematic QR code generator with multiple categories, customization, and export tools." />
+    <meta name="theme-color" content="#060b14" />
+    <title>QRcraft - Creative QR Code Generator</title>
+    <link rel="icon" type="image/svg+xml"
+        href="data:image/svg+xml,%3Csvg%20xmlns='http://www.w3.org/2000/svg'%20viewBox='0%200%2032%2032'%3E%3Crect%20width='32'%20height='32'%20rx='6'%20fill='%2338bdf8'/%3E%3Crect%20x='6'%20y='6'%20width='8'%20height='8'%20rx='1'%20fill='white'/%3E%3Crect%20x='18'%20y='6'%20width='8'%20height='8'%20rx='1'%20fill='white'/%3E%3Crect%20x='6'%20y='18'%20width='8'%20height='8'%20rx='1'%20fill='white'/%3E%3Crect%20x='18'%20y='18'%20width='4'%20height='4'%20rx='1'%20fill='white'/%3E%3C/svg%3E" />
+    <link
+        href="https://fonts.googleapis.com/css2?family=Syne:wght@400;700;800&family=Outfit:wght@300;400;600&display=swap"
+        rel="stylesheet" />
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+    <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.js"></script>
+    <style>
+        :root {
+            --bg: #060b14;
+            --bg-card: rgba(255, 255, 255, 0.07);
+            --border: rgba(255, 255, 255, 0.16);
+            --text-primary: #f8fafc;
+            --text-secondary: #cbd5e1;
+            --accent-1: #38bdf8;
+            --accent-2: #f59e0b;
+            --gradient-main: linear-gradient(135deg, #38bdf8, #f59e0b);
+            --font-display: 'Syne', sans-serif;
+            --font-body: 'Outfit', sans-serif;
+            --radius-card: 24px;
+            --radius-btn: 14px;
+            --blur-glass: blur(20px);
+            --transition-smooth: cubic-bezier(0.4, 0, 0.2, 1);
+            --transition-spring: cubic-bezier(0.34, 1.56, 0.64, 1);
+            --focus-color: #38bdf8;
+            --ambient-color: rgba(56, 189, 248, 0.12);
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            cursor: none;
+        }
+
+        html,
+        body {
+            width: 100%;
+            height: 100%;
+            scrollbar-width: none;
+        }
+
+        body {
+            background:
+                radial-gradient(1200px 800px at 15% -10%, rgba(56, 189, 248, 0.18), transparent 60%),
+                radial-gradient(900px 700px at 85% 0%, rgba(245, 158, 11, 0.12), transparent 55%),
+                var(--bg);
+            color: var(--text-primary);
+            font-family: var(--font-body);
+            overflow-x: hidden;
+        }
+
+        body::before {
+            content: '';
+            position: fixed;
+            top: 0;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 80vw;
+            height: 50vh;
+            background: radial-gradient(ellipse, var(--ambient-color) 0%, transparent 70%);
+            z-index: 0;
+            pointer-events: none;
+            transition: background 1s ease;
+        }
+
+        ::-webkit-scrollbar {
+            display: none;
+        }
+
+        section {
+            position: relative;
+            z-index: 1;
+            padding: 4rem 1.5rem;
+            display: none;
+        }
+
+        #hero {
+            display: flex;
+            min-height: 100vh;
+        }
+
+        #particle-canvas,
+        #confetti-canvas {
+            position: fixed;
+            inset: 0;
+            width: 100vw;
+            height: 100vh;
+            pointer-events: none;
+        }
+
+        #particle-canvas {
+            z-index: 0;
+        }
+
+        #confetti-canvas {
+            z-index: 999;
+        }
+
+        #loading-screen {
+            position: fixed;
+            inset: 0;
+            z-index: 10000;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: var(--bg);
+            transition: opacity 0.6s ease;
+        }
+
+        #loading-screen.loading-hidden {
+            opacity: 0;
+            pointer-events: none;
+        }
+
+        .loading-inner {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 14px;
+            font-family: var(--font-body);
+            color: var(--text-secondary);
+        }
+
+        .loading-spinner {
+            width: 32px;
+            height: 32px;
+            border-radius: 50%;
+            border: 3px solid rgba(255, 255, 255, 0.15);
+            border-top-color: var(--accent-1);
+            animation: spin 0.8s linear infinite;
+        }
+
+        #mode-tabs,
+        #category-section,
+        #form-section,
+        #output-section,
+        #scanner-section,
+        #main-footer {
+            display: none;
+        }
+
+        #cursor-dot {
+            position: fixed;
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            background: var(--gradient-main);
+            box-shadow: 0 0 10px rgba(255, 255, 255, 0.5), 0 0 18px rgba(56, 189, 248, 0.8);
+            mix-blend-mode: screen;
+            pointer-events: none;
+            z-index: 10000;
+            transform: translate(-50%, -50%);
+            transition: width 0.15s, height 0.15s;
+            top: 0;
+            left: 0;
+            opacity: 0;
+        }
+
+        #cursor-ring {
+            position: fixed;
+            width: 48px;
+            height: 48px;
+            border-radius: 50%;
+            border: 1.5px solid rgba(56, 189, 248, 0.7);
+            box-shadow: 0 0 20px rgba(56, 189, 248, 0.35);
+            pointer-events: none;
+            z-index: 9999;
+            transform: translate(-50%, -50%);
+            transition: width 0.2s, height 0.2s, border-color 0.2s;
+            top: 0;
+            left: 0;
+            opacity: 0;
+        }
+
+        #cursor-dot.cursor-hover {
+            width: 6px;
+            height: 6px;
+        }
+
+        #cursor-ring.cursor-hover {
+            width: 76px;
+            height: 76px;
+            border-color: var(--accent-2);
+        }
+
+        .touch-mode * {
+            cursor: auto !important;
+        }
+
+        @keyframes spin {
+            to {
+                transform: rotate(360deg);
+            }
+        }
+
+        @keyframes fadeInUp {
+            from {
+                opacity: 0;
+                transform: translateY(30px);
+            }
+
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .fade-in {
+            animation: fadeInUp 0.6s var(--transition-spring) forwards;
+        }
+
+        #hero {
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            position: relative;
+            overflow: hidden;
+            padding: 2rem 1.5rem;
+            text-align: center;
+            gap: 2rem;
+        }
+
+        .hero-bg-glow {
+            position: absolute;
+            width: 700px;
+            height: 700px;
+            border-radius: 50%;
+            background: radial-gradient(circle, rgba(56, 189, 248, 0.2) 0%, transparent 70%);
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            filter: blur(60px);
+            z-index: 0;
+            animation: glow-pulse 4s ease-in-out infinite alternate;
+        }
+
+        @keyframes glow-pulse {
+            from {
+                opacity: 0.5;
+                transform: translate(-50%, -50%) scale(1);
+            }
+
+            to {
+                opacity: 1;
+                transform: translate(-50%, -50%) scale(1.3);
+            }
+        }
+
+        .hero-nav {
+            position: absolute;
+            top: 2rem;
+            left: 50%;
+            transform: translateX(-50%);
+            z-index: 2;
+        }
+
+        .logo-mark {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            margin-bottom: 1rem;
+        }
+
+        .logo-text {
+            font-family: var(--font-display);
+            font-size: 1.8rem;
+            font-weight: 800;
+            background: var(--gradient-main);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            text-shadow: 0 6px 24px rgba(0, 0, 0, 0.45);
+        }
+
+        .hero-content {
+            position: relative;
+            z-index: 2;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 1.5rem;
+            max-width: 900px;
+        }
+
+        .hero-title {
+            font-family: var(--font-display);
+            font-size: clamp(2.5rem, 7vw, 6rem);
+            font-weight: 800;
+            line-height: 1.1;
+            background: var(--gradient-main);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            text-shadow: 0 10px 30px rgba(0, 0, 0, 0.55);
+        }
+
+        .word {
+            display: inline-block;
+            margin-right: 0.25em;
+            opacity: 0;
+            transform: translateY(60px);
+            transition: opacity 0.5s, transform 0.5s var(--transition-spring);
+        }
+
+        .word.visible {
+            opacity: 1;
+            transform: translateY(0);
+        }
+
+        .word.word-bouncing {
+            animation: wordBounce 0.5s var(--transition-spring);
+        }
+
+        @keyframes wordBounce {
+            0% {
+                transform: translateY(0);
+            }
+
+            30% {
+                transform: translateY(10px);
+            }
+
+            70% {
+                transform: translateY(-4px);
+            }
+
+            100% {
+                transform: translateY(0);
+            }
+        }
+
+        .hero-subtitle {
+            font-size: clamp(1rem, 2vw, 1.25rem);
+            color: var(--text-secondary);
+            max-width: 500px;
+        }
+
+        .hero-stats {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 12px;
+            flex-wrap: wrap;
+        }
+
+        .stat-pill {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            background: rgba(255, 255, 255, 0.1);
+            border: 1px solid var(--border);
+            border-radius: 100px;
+            padding: 8px 20px;
+            font-family: var(--font-body);
+            font-size: 0.85rem;
+            font-weight: 600;
+        }
+
+        #hero-cta {
+            position: relative;
+            background: var(--gradient-main);
+            border: none;
+            font-family: var(--font-display);
+            font-size: 1.1rem;
+            font-weight: 700;
+            padding: 18px 44px;
+            border-radius: var(--radius-btn);
+            color: white;
+            cursor: none;
+            box-shadow: 0 0 30px rgba(124, 58, 237, 0.4);
+            transition: transform 0.3s var(--transition-spring), box-shadow 0.3s;
+            overflow: hidden;
+        }
+
+        #hero-cta:hover {
+            transform: scale(1.06);
+            box-shadow: 0 0 50px rgba(124, 58, 237, 0.6);
+        }
+
+        #mode-tabs {
+            display: flex;
+            justify-content: center;
+            gap: 8px;
+            padding: 1.5rem 1rem;
+            z-index: 2;
+        }
+
+        .tab-btn {
+            padding: 12px 28px;
+            min-height: 44px;
+            border-radius: 100px;
+            border: 1px solid var(--border);
+            background: rgba(255, 255, 255, 0.05);
+            color: var(--text-secondary);
+            font-family: var(--font-body);
+            font-size: 0.95rem;
+            font-weight: 600;
+            cursor: none;
+            transition: all 0.25s;
+        }
+
+        .tab-btn.active {
+            background: var(--gradient-main);
+            border-color: transparent;
+            color: white;
+            box-shadow: 0 0 20px rgba(124, 58, 237, 0.3);
+        }
+
+        .section-header {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 0.5rem;
+            text-align: center;
+        }
+
+        .section-label {
+            text-transform: uppercase;
+            letter-spacing: 0.2em;
+            font-size: 0.7rem;
+            color: var(--text-secondary);
+        }
+
+        .section-title {
+            font-family: var(--font-display);
+            font-size: clamp(1.8rem, 4vw, 3rem);
+            font-weight: 800;
+            background: var(--gradient-main);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            text-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+        }
+
+        .section-actions {
+            margin-top: 0.75rem;
+        }
+
+        #random-category {
+            padding: 8px 18px;
+            border-radius: 100px;
+            border: 1px solid var(--border);
+            background: rgba(255, 255, 255, 0.05);
+            color: var(--text-primary);
+            font-family: var(--font-body);
+            font-size: 0.85rem;
+            font-weight: 600;
+            cursor: none;
+            min-height: 44px;
+            transition: transform 0.2s var(--transition-spring), box-shadow 0.2s;
+        }
+
+        #random-category:hover {
+            transform: scale(1.04);
+            box-shadow: 0 8px 26px rgba(0, 0, 0, 0.4);
+        }
+
+        .category-grid {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 14px;
+            max-width: 960px;
+            margin: 2.5rem auto 0;
+        }
+
+        .category-card {
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: 20px;
+            padding: 24px 16px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            gap: 12px;
+            cursor: none;
+            position: relative;
+            overflow: hidden;
+            transition: transform 0.3s var(--transition-spring), box-shadow 0.3s, opacity 0.3s;
+        }
+
+        .category-card:hover,
+        .category-card.touch-active {
+            transform: scale(1.04);
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5);
+        }
+
+        .category-card.selected {
+            transform: scale(1.06);
+            opacity: 1 !important;
+        }
+
+        .category-card.dimmed {
+            opacity: 0.45;
+            transform: scale(0.95);
+        }
+
+        .card-icon {
+            width: 48px;
+            height: 48px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-shrink: 0;
+        }
+
+        .card-label {
+            font-size: 0.85rem;
+            font-weight: 600;
+            color: var(--text-primary);
+            text-align: center;
+        }
+
+        .card-glow {
+            position: absolute;
+            inset: 0;
+            border-radius: inherit;
+            opacity: 0;
+            transition: opacity 0.3s;
+            pointer-events: none;
+            z-index: -1;
+        }
+
+        .category-card:hover .card-glow {
+            opacity: 0.1;
+        }
+
+        .category-card.selected .card-glow {
+            opacity: 0.15;
+        }
+
+        @keyframes shuffle {
+            0% {
+                transform: rotate(0) scale(1);
+            }
+
+            50% {
+                transform: rotate(180deg) scale(0.92);
+            }
+
+            100% {
+                transform: rotate(360deg) scale(1);
+            }
+        }
+
+        .shuffle-spin {
+            animation: shuffle 0.5s var(--transition-smooth) forwards;
+        }
+
+        .form-wrapper {
+            max-width: 680px;
+            margin: 0 auto;
+            display: flex;
+            flex-direction: column;
+            gap: 1.25rem;
+        }
+
+        .form-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 1rem;
+        }
+
+        .form-header-left {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .form-header-icon {
+            width: 56px;
+            height: 56px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: rgba(255, 255, 255, 0.06);
+            border: 1px solid var(--border);
+        }
+
+        .form-category-name {
+            font-family: var(--font-display);
+            font-size: 1.4rem;
+            font-weight: 700;
+        }
+
+        .change-category {
+            border: none;
+            background: transparent;
+            color: var(--text-secondary);
+            font-family: var(--font-body);
+            cursor: none;
+            font-size: 0.85rem;
+            min-height: 44px;
+        }
+
+        .form-card {
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: var(--radius-card);
+            padding: 2rem;
+            backdrop-filter: var(--blur-glass);
+            transition: transform 0.2s;
+        }
+
+        .form-card.shake {
+            animation: shake 0.4s;
+        }
+
+        @keyframes shake {
+            0% {
+                transform: translateX(0);
+            }
+
+            25% {
+                transform: translateX(-8px);
+            }
+
+            75% {
+                transform: translateX(8px);
+            }
+
+            100% {
+                transform: translateX(0);
+            }
+        }
+
+        .form-field {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            margin-bottom: 18px;
+        }
+
+        .form-field label {
+            font-size: 0.8rem;
+            font-weight: 600;
+            color: var(--text-secondary);
+            letter-spacing: 0.08em;
+            text-transform: uppercase;
+        }
+
+        .form-field input,
+        .form-field textarea,
+        .form-field select {
+            background: rgba(255, 255, 255, 0.06);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            padding: 14px 18px;
+            color: var(--text-primary);
+            font-family: var(--font-body);
+            font-size: 0.95rem;
+            width: 100%;
+            outline: none;
+            box-sizing: border-box;
+            transition: border-color 0.2s, box-shadow 0.2s;
+        }
+
+        .form-field input:focus,
+        .form-field textarea:focus,
+        .form-field select:focus {
+            border-color: var(--focus-color);
+            box-shadow: 0 0 0 3px rgba(124, 58, 237, 0.15);
+        }
+
+        .input-row {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .field-btn {
+            padding: 10px 14px;
+            border-radius: 10px;
+            border: 1px solid var(--border);
+            background: rgba(255, 255, 255, 0.06);
+            color: var(--text-primary);
+            font-family: var(--font-body);
+            font-size: 0.85rem;
+            cursor: none;
+            min-height: 44px;
+            transition: transform 0.25s var(--transition-spring), box-shadow 0.25s ease;
+        }
+
+        .field-btn.auto-uploading {
+            background: linear-gradient(135deg, rgba(56, 189, 248, 0.26), rgba(124, 58, 237, 0.28));
+            border-color: rgba(148, 163, 184, 0.5);
+            box-shadow: 0 0 24px rgba(56, 189, 248, 0.24);
+            transform: scale(1.02);
+        }
+
+        .field-note {
+            font-size: 0.78rem;
+            color: var(--text-secondary);
+            margin-top: 4px;
+        }
+
+        .preview-text {
+            font-size: 0.9rem;
+            color: var(--accent-2);
+            padding: 8px 12px;
+            background: rgba(6, 182, 212, 0.08);
+            border-radius: 8px;
+            border: 1px solid rgba(6, 182, 212, 0.2);
+        }
+
+        .error-msg {
+            font-size: 0.8rem;
+            color: #f87171;
+            margin-top: 6px;
+        }
+
+        .qr-options-panel {
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: var(--radius-card);
+            padding: 1rem 1.5rem;
+            backdrop-filter: var(--blur-glass);
+        }
+
+        .qr-options-toggle {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            cursor: none;
+            font-family: var(--font-display);
+            font-size: 0.95rem;
+            background: none;
+            border: none;
+            color: var(--text-primary);
+            width: 100%;
+            min-height: 44px;
+        }
+
+        .qr-options-body {
+            display: none;
+            margin-top: 1rem;
+            gap: 16px;
+            flex-direction: column;
+        }
+
+        .qr-options-body.open {
+            display: flex;
+        }
+
+        .color-picker-wrapper {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .color-swatch {
+            width: 18px;
+            height: 18px;
+            border-radius: 50%;
+            border: 1px solid var(--border);
+            background: #000;
+        }
+
+        .slider-field label {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        .ecc-options {
+            display: flex;
+            gap: 10px;
+            margin-top: 8px;
+        }
+
+        .ecc-btn {
+            padding: 8px 16px;
+            border-radius: 8px;
+            border: 1px solid var(--border);
+            background: transparent;
+            color: var(--text-secondary);
+            font-family: var(--font-body);
+            cursor: none;
+            transition: all 0.2s;
+            min-height: 44px;
+            min-width: 44px;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .ecc-btn.active {
+            background: var(--gradient-main);
+            border-color: transparent;
+            color: white;
+        }
+
+        #generate-btn {
+            position: relative;
+            background: var(--gradient-main);
+            border: none;
+            width: 100%;
+            height: 56px;
+            border-radius: var(--radius-btn);
+            font-family: var(--font-display);
+            font-size: 1.1rem;
+            font-weight: 700;
+            color: white;
+            cursor: none;
+            margin-top: 1.5rem;
+            transition: transform 0.2s var(--transition-spring), box-shadow 0.2s;
+            overflow: hidden;
+        }
+
+        #generate-btn:hover {
+            transform: scale(1.02);
+            box-shadow: 0 0 30px rgba(124, 58, 237, 0.5);
+        }
+
+        .btn-wave {
+            position: absolute;
+            inset: 0;
+            border-radius: inherit;
+            background: radial-gradient(circle, rgba(255, 255, 255, 0.6) 0%, transparent 70%);
+            opacity: 0.5;
+            animation: wave 0.5s ease-out forwards;
+            pointer-events: none;
+        }
+
+        .btn-spinner {
+            display: inline-block;
+            width: 14px;
+            height: 14px;
+            border-radius: 50%;
+            border: 2px solid rgba(255, 255, 255, 0.3);
+            border-top-color: white;
+            animation: spin 0.7s linear infinite;
+            margin-right: 8px;
+        }
+
+        @keyframes wave {
+            from {
+                transform: scale(1);
+                opacity: 0.5;
+            }
+
+            to {
+                transform: scale(2.5);
+                opacity: 0;
+            }
+        }
+
+        .output-wrapper {
+            max-width: 680px;
+            margin: 0 auto;
+        }
+
+        .output-card {
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: var(--radius-card);
+            padding: 2.5rem;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 24px;
+            backdrop-filter: var(--blur-glass);
+        }
+
+        .output-label {
+            font-size: 0.75rem;
+            letter-spacing: 0.2em;
+            color: var(--text-secondary);
+            text-transform: uppercase;
+        }
+
+        #qr-container {
+            display: inline-block;
+            position: relative;
+            border-radius: 16px;
+            overflow: hidden;
+            cursor: none;
+            transition: box-shadow 0.5s;
+            --qr-glow: rgba(124, 58, 237, 0.4);
+        }
+
+        #qr-container.revealed {
+            box-shadow: 0 0 50px var(--qr-glow), 0 0 100px rgba(6, 182, 212, 0.15);
+            animation: qr-breathe 3s ease-in-out infinite;
+        }
+
+        @keyframes qr-breathe {
+
+            0%,
+            100% {
+                box-shadow: 0 0 40px var(--qr-glow), 0 0 80px rgba(124, 58, 237, 0.1);
+            }
+
+            50% {
+                box-shadow: 0 0 70px var(--qr-glow), 0 0 140px rgba(6, 182, 212, 0.2);
+            }
+        }
+
+        .blooming {
+            clip-path: circle(0% at center);
+            transition: clip-path 0.7s ease-out;
+        }
+
+        .bloom-open {
+            clip-path: circle(75% at center);
+        }
+
+        .ring-pulse {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            border-radius: 50%;
+            opacity: 0.7;
+            pointer-events: none;
+            animation: ring-expand 0.8s ease-out forwards;
+        }
+
+        @keyframes ring-expand {
+            from {
+                transform: scale(1);
+                opacity: 0.7;
+            }
+
+            to {
+                transform: scale(2.2);
+                opacity: 0;
+            }
+        }
+
+        .glitching {
+            animation: glitch 0.22s steps(3) forwards;
+        }
+
+        @keyframes glitch {
+            0% {
+                transform: translate(0);
+            }
+
+            15% {
+                transform: translate(-3px, 1px);
+                filter: hue-rotate(90deg);
+            }
+
+            30% {
+                transform: translate(3px, -1px);
+                filter: hue-rotate(-90deg) saturate(2);
+            }
+
+            50% {
+                transform: translate(-2px, 2px);
+                filter: brightness(1.3);
+            }
+
+            70% {
+                transform: translate(2px, -2px);
+                filter: hue-rotate(180deg);
+            }
+
+            85% {
+                transform: translate(-1px, 1px);
+                filter: saturate(0.5);
+            }
+
+            100% {
+                transform: translate(0);
+                filter: none;
+            }
+        }
+
+        #qr-info {
+            color: var(--text-secondary);
+            font-size: 0.9rem;
+            text-align: center;
+        }
+
+        .download-row {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+            justify-content: center;
+        }
+
+        .dl-btn {
+            background: rgba(255, 255, 255, 0.08);
+            border: 1px solid var(--border);
+            border-radius: 10px;
+            padding: 12px 22px;
+            color: var(--text-primary);
+            font-family: var(--font-body);
+            font-size: 0.88rem;
+            font-weight: 600;
+            cursor: none;
+            transition: all 0.2s;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            min-height: 44px;
+            justify-content: center;
+        }
+
+        .dl-btn:hover {
+            background: rgba(255, 255, 255, 0.14);
+            transform: translateY(-2px);
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
+        }
+
+        #dl-png {
+            background: var(--gradient-main);
+            border-color: transparent;
+            box-shadow: 0 0 20px rgba(124, 58, 237, 0.25);
+        }
+
+        .btn-pop {
+            animation: btn-pop 0.4s;
+        }
+
+        @keyframes btn-pop {
+            0% {
+                transform: scale(1);
+            }
+
+            40% {
+                transform: scale(1.12);
+            }
+
+            70% {
+                transform: scale(0.96);
+            }
+
+            100% {
+                transform: scale(1);
+            }
+        }
+
+        .output-footer-note {
+            font-size: 0.8rem;
+            color: var(--text-secondary);
+        }
+
+        #make-another {
+            border: 1px solid var(--border);
+            background: transparent;
+            color: var(--text-primary);
+            padding: 12px 28px;
+            border-radius: var(--radius-btn);
+            font-family: var(--font-body);
+            cursor: none;
+            min-height: 44px;
+        }
+
+        .drawer-overlay {
+            position: fixed;
+            inset: 0;
+            background: rgba(0, 0, 0, 0.6);
+            z-index: 500;
+            opacity: 0;
+            transition: opacity 0.3s;
+            pointer-events: none;
+        }
+
+        .drawer-panel {
+            position: fixed;
+            top: 0;
+            right: 0;
+            height: 100vh;
+            width: 360px;
+            background: #0e0e18;
+            border-left: 1px solid var(--border);
+            z-index: 501;
+            transform: translateX(100%);
+            transition: transform 0.35s var(--transition-spring);
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+
+        .drawer-panel.open {
+            transform: translateX(0);
+        }
+
+        .drawer-overlay.open {
+            opacity: 1;
+            pointer-events: all;
+        }
+
+        .drawer-header {
+            padding: 1.5rem;
+            border-bottom: 1px solid var(--border);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .drawer-header h3 {
+            font-family: var(--font-display);
+            font-size: 1.1rem;
+        }
+
+        #clear-history {
+            border: 1px solid rgba(239, 68, 68, 0.4);
+            background: rgba(239, 68, 68, 0.15);
+            color: #ef4444;
+            border-radius: 8px;
+            padding: 6px 12px;
+            font-size: 0.8rem;
+            cursor: none;
+            min-height: 44px;
+        }
+
+        #close-drawer {
+            border: none;
+            background: transparent;
+            color: var(--text-secondary);
+            font-size: 1.2rem;
+            cursor: none;
+            padding: 6px 10px;
+            min-height: 44px;
+        }
+
+        .drawer-body {
+            flex: 1;
+            overflow-y: auto;
+            padding: 1rem;
+        }
+
+        #history-empty {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+            padding: 2rem 1rem;
+            color: var(--text-secondary);
+            text-align: center;
+        }
+
+        .qr-empty-frame {
+            width: 64px;
+            height: 64px;
+            border: 2px solid var(--border);
+            border-radius: 12px;
+            position: relative;
+        }
+
+        .history-item {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 12px;
+            border-radius: 12px;
+            border: 1px solid var(--border);
+            margin-bottom: 8px;
+            cursor: none;
+            transition: background 0.2s;
+        }
+
+        .history-item:hover {
+            background: rgba(255, 255, 255, 0.04);
+        }
+
+        .history-item.removing {
+            transform: translateX(100%);
+            opacity: 0;
+            transition: 0.3s;
+        }
+
+        .hist-thumb {
+            width: 56px;
+            height: 56px;
+            border-radius: 8px;
+            object-fit: contain;
+            background: white;
+            flex-shrink: 0;
+        }
+
+        .hist-info {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+        }
+
+        .hist-meta {
+            font-size: 0.75rem;
+            color: var(--text-secondary);
+            display: flex;
+            gap: 6px;
+            align-items: center;
+        }
+
+        .hist-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+        }
+
+        .hist-content {
+            font-size: 0.85rem;
+            color: var(--text-primary);
+        }
+
+        .hist-actions {
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+        }
+
+        .hist-restore {
+            background: rgba(124, 58, 237, 0.15);
+            border: none;
+            border-radius: 6px;
+            padding: 6px 12px;
+            color: var(--accent-1);
+            font-size: 0.8rem;
+            cursor: none;
+            min-height: 44px;
+        }
+
+        .hist-delete {
+            background: transparent;
+            border: none;
+            color: var(--text-secondary);
+            font-size: 1.1rem;
+            cursor: none;
+            padding: 4px 8px;
+            min-height: 44px;
+        }
+
+        .hist-delete:hover {
+            color: #ef4444;
+        }
+
+        #history-toggle {
+            position: fixed;
+            bottom: 1.5rem;
+            right: 1.5rem;
+            width: 52px;
+            height: 52px;
+            border-radius: 50%;
+            background: var(--gradient-main);
+            border: none;
+            z-index: 400;
+            cursor: none;
+            box-shadow: 0 4px 20px rgba(124, 58, 237, 0.4);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.2rem;
+            color: white;
+        }
+
+        .scanner-wrapper {
+            max-width: 520px;
+            margin: 0 auto;
+            display: flex;
+            flex-direction: column;
+            gap: 24px;
+        }
+
+        .scanner-title {
+            font-family: var(--font-display);
+            font-size: clamp(1.8rem, 4vw, 2.6rem);
+            background: var(--gradient-main);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            text-align: center;
+        }
+
+        .scanner-sub {
+            color: var(--text-secondary);
+            text-align: center;
+        }
+
+        .scanner-card {
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: var(--radius-card);
+            padding: 1.5rem;
+            backdrop-filter: var(--blur-glass);
+        }
+
+        #scanner-video {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+
+        #scanner-canvas {
+            display: none;
+            position: absolute;
+            top: 0;
+            left: 0;
+        }
+
+        .video-wrapper {
+            position: relative;
+            border-radius: 20px;
+            overflow: hidden;
+            width: 100%;
+            aspect-ratio: 1 / 1;
+            background: #111;
+            border: 2px solid transparent;
+            transition: border 0.3s, box-shadow 0.3s;
+        }
+
+        .scan-frame {
+            position: absolute;
+            inset: 0;
+            pointer-events: none;
+        }
+
+        .scan-frame .corner {
+            position: absolute;
+            width: 24px;
+            height: 24px;
+            border: 3px solid var(--accent-2);
+            opacity: 0.8;
+            animation: cornerPulse 1.6s ease-in-out infinite alternate;
+        }
+
+        .scan-frame .corner.tl {
+            top: 12px;
+            left: 12px;
+            border-right: none;
+            border-bottom: none;
+        }
+
+        .scan-frame .corner.tr {
+            top: 12px;
+            right: 12px;
+            border-left: none;
+            border-bottom: none;
+        }
+
+        .scan-frame .corner.bl {
+            bottom: 12px;
+            left: 12px;
+            border-right: none;
+            border-top: none;
+        }
+
+        .scan-frame .corner.br {
+            bottom: 12px;
+            right: 12px;
+            border-left: none;
+            border-top: none;
+        }
+
+        @keyframes cornerPulse {
+            from {
+                opacity: 0.4;
+            }
+
+            to {
+                opacity: 1;
+            }
+        }
+
+        .scan-line {
+            position: absolute;
+            left: 10%;
+            width: 80%;
+            height: 2px;
+            background: linear-gradient(90deg, transparent, var(--accent-2), transparent);
+            animation: scanMove 2s linear infinite;
+        }
+
+        @keyframes scanMove {
+            0% {
+                top: 10%;
+            }
+
+            50% {
+                top: 88%;
+            }
+
+            100% {
+                top: 10%;
+            }
+        }
+
+        .scan-success {
+            border: 3px solid #25d366 !important;
+            box-shadow: 0 0 30px rgba(37, 211, 102, 0.4);
+        }
+
+        #scan-result {
+            display: none;
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: var(--radius-card);
+            padding: 1.5rem;
+            backdrop-filter: var(--blur-glass);
+        }
+
+        .result-header {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            font-family: var(--font-display);
+            font-size: 1.1rem;
+            margin-bottom: 0.5rem;
+        }
+
+        #result-content {
+            word-break: break-all;
+            color: var(--text-secondary);
+            margin-bottom: 1rem;
+        }
+
+        .result-actions {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+        }
+
+        .scanner-controls {
+            display: flex;
+            gap: 10px;
+            justify-content: center;
+            flex-wrap: wrap;
+        }
+
+        .scanner-controls button {
+            padding: 10px 20px;
+            border-radius: 10px;
+            border: 1px solid var(--border);
+            background: rgba(255, 255, 255, 0.06);
+            color: var(--text-primary);
+            cursor: none;
+            min-height: 44px;
+        }
+
+        #scanner-error {
+            display: none;
+            color: #f87171;
+            text-align: center;
+        }
+
+        #upload-story-overlay {
+            position: fixed;
+            inset: 0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: rgba(4, 8, 18, 0.8);
+            backdrop-filter: blur(8px);
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.35s ease;
+            z-index: 9200;
+        }
+
+        #upload-story-overlay.visible {
+            opacity: 1;
+            pointer-events: auto;
+        }
+
+        .upload-story-card {
+            width: min(760px, calc(100vw - 2rem));
+            border-radius: 24px;
+            border: 1px solid rgba(148, 163, 184, 0.35);
+            background:
+                radial-gradient(120% 120% at 20% 5%, rgba(56, 189, 248, 0.2), transparent 55%),
+                radial-gradient(120% 120% at 80% 0%, rgba(124, 58, 237, 0.2), transparent 55%),
+                rgba(10, 14, 28, 0.92);
+            box-shadow: 0 30px 80px rgba(2, 6, 23, 0.65);
+            overflow: hidden;
+            padding: 1.1rem 1.1rem 1.3rem;
+        }
+
+        .upload-story-chip {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            padding: 6px 12px;
+            border-radius: 999px;
+            border: 1px solid rgba(148, 163, 184, 0.35);
+            background: rgba(15, 23, 42, 0.65);
+            color: #cbd5e1;
+            font-size: 0.74rem;
+            letter-spacing: 0.08em;
+            text-transform: uppercase;
+            margin-bottom: 0.8rem;
+        }
+
+        .upload-story-track {
+            width: 100%;
+            height: 6px;
+            border-radius: 999px;
+            background: rgba(148, 163, 184, 0.22);
+            overflow: hidden;
+            margin-bottom: 0.95rem;
+        }
+
+        #upload-story-progress {
+            display: block;
+            height: 100%;
+            width: 0;
+            border-radius: inherit;
+            transition: width 0.7s ease;
+            background: linear-gradient(90deg, #38bdf8, #7c3aed, #f59e0b);
+            box-shadow: 0 0 20px rgba(56, 189, 248, 0.4);
+        }
+
+        .upload-story-scene {
+            position: relative;
+            border-radius: 18px;
+            border: 1px solid rgba(148, 163, 184, 0.2);
+            background:
+                radial-gradient(120% 80% at 50% 100%, rgba(56, 189, 248, 0.16), transparent 60%),
+                linear-gradient(180deg, rgba(15, 23, 42, 0.88), rgba(15, 23, 42, 0.35));
+            height: 208px;
+            overflow: hidden;
+            margin-bottom: 0.9rem;
+        }
+
+        .upload-story-lane {
+            position: absolute;
+            left: 20%;
+            right: 20%;
+            top: 52%;
+            height: 2px;
+            background: linear-gradient(90deg, transparent, rgba(56, 189, 248, 0.5), rgba(124, 58, 237, 0.5), transparent);
+            filter: drop-shadow(0 0 8px rgba(56, 189, 248, 0.4));
+            animation: lanePulse 1.4s ease-in-out infinite;
+        }
+
+        .story-avatar {
+            position: absolute;
+            bottom: 20px;
+            width: 94px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 8px;
+            animation: avatarFloat 1.8s ease-in-out infinite;
+        }
+
+        .story-avatar.right {
+            right: 11%;
+            animation-delay: 0.2s;
+        }
+
+        .story-avatar.left {
+            left: 11%;
+        }
+
+        .story-head {
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, #e2e8f0, #94a3b8);
+            border: 1px solid rgba(226, 232, 240, 0.7);
+        }
+
+        .story-body {
+            width: 34px;
+            height: 54px;
+            border-radius: 18px 18px 14px 14px;
+            background: linear-gradient(180deg, rgba(56, 189, 248, 0.7), rgba(56, 189, 248, 0.25));
+            border: 1px solid rgba(125, 211, 252, 0.6);
+            position: relative;
+        }
+
+        .story-avatar.right .story-body {
+            background: linear-gradient(180deg, rgba(167, 139, 250, 0.75), rgba(124, 58, 237, 0.26));
+            border-color: rgba(167, 139, 250, 0.7);
+        }
+
+        .story-body::before,
+        .story-body::after {
+            content: '';
+            position: absolute;
+            top: 11px;
+            width: 8px;
+            height: 28px;
+            border-radius: 999px;
+            background: rgba(148, 163, 184, 0.45);
+        }
+
+        .story-body::before {
+            left: -7px;
+            transform: rotate(18deg);
+        }
+
+        .story-body::after {
+            right: -7px;
+            transform: rotate(-18deg);
+        }
+
+        .story-badge {
+            font-size: 0.68rem;
+            letter-spacing: 0.08em;
+            text-transform: uppercase;
+            color: #e2e8f0;
+            opacity: 0.8;
+        }
+
+        .story-packet {
+            position: absolute;
+            top: calc(52% - 7px);
+            left: 23%;
+            width: 14px;
+            height: 14px;
+            border-radius: 4px;
+            background: linear-gradient(135deg, #38bdf8, #f59e0b);
+            box-shadow: 0 0 16px rgba(56, 189, 248, 0.55);
+            animation: packetTravel 1.8s linear infinite;
+        }
+
+        .story-packet.p2 {
+            animation-delay: 0.55s;
+        }
+
+        .story-packet.p3 {
+            animation-delay: 1.1s;
+        }
+
+        #upload-story-line {
+            font-family: var(--font-display);
+            font-size: clamp(1rem, 2.3vw, 1.34rem);
+            color: var(--text-primary);
+            margin-bottom: 0.35rem;
+        }
+
+        #upload-story-subline {
+            color: var(--text-secondary);
+            font-size: 0.95rem;
+        }
+
+        #upload-story-overlay.story-success #upload-story-progress {
+            background: linear-gradient(90deg, #22c55e, #4ade80);
+            box-shadow: 0 0 18px rgba(34, 197, 94, 0.45);
+        }
+
+        #upload-story-overlay.story-error #upload-story-progress {
+            background: linear-gradient(90deg, #f97316, #ef4444);
+            box-shadow: 0 0 18px rgba(239, 68, 68, 0.35);
+        }
+
+        @keyframes lanePulse {
+
+            0%,
+            100% {
+                opacity: 0.45;
+            }
+
+            50% {
+                opacity: 1;
+            }
+        }
+
+        @keyframes avatarFloat {
+
+            0%,
+            100% {
+                transform: translateY(0);
+            }
+
+            50% {
+                transform: translateY(-7px);
+            }
+        }
+
+        @keyframes packetTravel {
+            0% {
+                transform: translateX(0) scale(0.8);
+                opacity: 0;
+            }
+
+            20% {
+                opacity: 1;
+            }
+
+            80% {
+                opacity: 1;
+            }
+
+            100% {
+                transform: translateX(calc(54vw - 280px)) scale(1.05);
+                opacity: 0;
+            }
+        }
+
+        #auto-upload-hand {
+            position: fixed;
+            width: 88px;
+            height: 88px;
+            opacity: 0;
+            pointer-events: none;
+            z-index: 9300;
+            transform: translate(0, 0) rotate(-12deg);
+            transform-origin: 60% 60%;
+            transition: transform 0.78s var(--transition-spring), opacity 0.2s ease;
+        }
+
+        #auto-upload-hand.visible {
+            opacity: 1;
+        }
+
+        .hand-palm {
+            position: absolute;
+            bottom: 16px;
+            left: 22px;
+            width: 42px;
+            height: 36px;
+            border-radius: 16px;
+            background: linear-gradient(180deg, #f8fafc, #cbd5e1);
+            box-shadow: 0 14px 22px rgba(2, 6, 23, 0.45);
+        }
+
+        .hand-finger {
+            position: absolute;
+            bottom: 45px;
+            left: 50px;
+            width: 12px;
+            height: 32px;
+            border-radius: 999px;
+            background: linear-gradient(180deg, #f8fafc, #cbd5e1);
+            transform-origin: bottom center;
+            transition: transform 0.16s ease;
+        }
+
+        .hand-thumb {
+            position: absolute;
+            bottom: 30px;
+            left: 15px;
+            width: 16px;
+            height: 24px;
+            border-radius: 999px;
+            background: linear-gradient(180deg, #f8fafc, #cbd5e1);
+            transform: rotate(-28deg);
+        }
+
+        .hand-ring {
+            position: absolute;
+            right: 8px;
+            top: 16px;
+            width: 18px;
+            height: 18px;
+            border-radius: 50%;
+            border: 2px solid rgba(56, 189, 248, 0.8);
+            opacity: 0;
+            transform: scale(0.35);
+        }
+
+        #auto-upload-hand.tap .hand-finger {
+            transform: translateY(9px);
+        }
+
+        #auto-upload-hand.tap .hand-ring {
+            animation: handRing 0.36s ease-out;
+        }
+
+        @keyframes handRing {
+            0% {
+                opacity: 0.95;
+                transform: scale(0.35);
+            }
+
+            100% {
+                opacity: 0;
+                transform: scale(1.9);
+            }
+        }
+
+        .toast {
+            position: fixed;
+            bottom: 2rem;
+            left: 50%;
+            transform: translateX(-50%) translateY(20px);
+            background: rgba(15, 15, 25, 0.95);
+            border: 1px solid var(--border);
+            backdrop-filter: var(--blur-glass);
+            border-radius: 100px;
+            padding: 12px 28px;
+            z-index: 5000;
+            font-family: var(--font-body);
+            font-size: 0.9rem;
+            opacity: 0;
+            transition: all 0.3s;
+            white-space: nowrap;
+            pointer-events: none;
+            color: var(--text-primary);
+        }
+
+        .toast.toast-visible {
+            opacity: 1;
+            transform: translateX(-50%) translateY(0);
+        }
+
+        .toast.toast-success {
+            border-color: rgba(34, 197, 94, 0.4);
+            color: #22c55e;
+        }
+
+        .toast.toast-error {
+            border-color: rgba(239, 68, 68, 0.4);
+            color: #f87171;
+        }
+
+        .qr-rain {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            z-index: 2;
+            overflow: hidden;
+        }
+
+        .flying-emoji {
+            position: fixed;
+            font-size: 2rem;
+            pointer-events: none;
+            z-index: 800;
+        }
+
+        .rain-sq {
+            position: absolute;
+            top: -20px;
+            border-radius: 2px;
+            opacity: 0.12;
+            animation: fall-sq linear forwards;
+        }
+
+        @keyframes fall-sq {
+            from {
+                transform: translateY(-20px);
+            }
+
+            to {
+                transform: translateY(110vh);
+            }
+        }
+
+        @media (max-width: 1024px) {
+            .category-grid {
+                grid-template-columns: repeat(3, 1fr);
+            }
+        }
+
+        @media (max-width: 768px) {
+            .category-grid {
+                grid-template-columns: repeat(2, 1fr);
+                gap: 10px;
+            }
+
+            .category-card {
+                padding: 18px 12px;
+            }
+
+            .hero-title {
+                font-size: clamp(2rem, 9vw, 3.5rem);
+            }
+
+            .drawer-panel {
+                width: 100vw;
+            }
+
+            .download-row {
+                flex-direction: column;
+                align-items: stretch;
+            }
+
+            .dl-btn {
+                justify-content: center;
+            }
+
+            #form-section,
+            #output-section,
+            #category-section {
+                padding: 2rem 1rem;
+            }
+
+            .form-card,
+            .output-card {
+                padding: 1.5rem 1rem;
+            }
+
+            .scanner-wrapper {
+                padding: 0 1rem;
+            }
+
+            #hero-cta {
+                padding: 15px 32px;
+                font-size: 1rem;
+            }
+
+            .upload-story-card {
+                padding: 0.9rem 0.9rem 1.1rem;
+            }
+
+            .upload-story-scene {
+                height: 176px;
+            }
+
+            .story-avatar {
+                transform-origin: bottom center;
+                transform: scale(0.86);
+            }
+
+            #auto-upload-hand {
+                width: 76px;
+                height: 76px;
+            }
+        }
+
+        @media (max-width: 480px) {
+            .category-grid {
+                grid-template-columns: repeat(2, 1fr);
+                gap: 8px;
+            }
+
+            .category-card {
+                padding: 14px 8px;
+            }
+
+            .card-icon {
+                width: 40px;
+                height: 40px;
+            }
+
+            .card-label {
+                font-size: 0.78rem;
+            }
+
+            #history-drawer .drawer-panel {
+                width: 100vw;
+            }
+        }
+
+        @media (prefers-reduced-motion: reduce) {
+            * {
+                animation: none !important;
+                transition: none !important;
+            }
+        }
+    </style>
+</head>
+
+<body>
+    <div id="cursor-dot"></div>
+    <div id="cursor-ring"></div>
+    <canvas id="particle-canvas"></canvas>
+    <canvas id="confetti-canvas"></canvas>
+    <div id="loading-screen">
+        <div class="loading-inner">
+            <div class="loading-spinner"></div>
+            <p>Loading QRcraft...</p>
+        </div>
+    </div>
+    <div id="upload-story-overlay" aria-hidden="true">
+        <div class="upload-story-card">
+            <div class="upload-story-chip">Cloud Courier Story</div>
+            <div class="upload-story-track"><span id="upload-story-progress"></span></div>
+            <div class="upload-story-scene">
+                <div class="upload-story-lane"></div>
+                <div class="story-avatar left">
+                    <div class="story-head"></div>
+                    <div class="story-body"></div>
+                    <div class="story-badge">Nova</div>
+                </div>
+                <div class="story-avatar right">
+                    <div class="story-head"></div>
+                    <div class="story-body"></div>
+                    <div class="story-badge">Ari</div>
+                </div>
+                <span class="story-packet p1"></span>
+                <span class="story-packet p2"></span>
+                <span class="story-packet p3"></span>
+            </div>
+            <p id="upload-story-line">Nova found your file in the archive.</p>
+            <p id="upload-story-subline">Preparing secure tunnel for the public link.</p>
+        </div>
+    </div>
+    <div id="auto-upload-hand" aria-hidden="true">
+        <div class="hand-palm"></div>
+        <div class="hand-thumb"></div>
+        <div class="hand-finger"></div>
+        <div class="hand-ring"></div>
+    </div>
+
+    <section id="hero">
+        <div class="hero-bg-glow"></div>
+        <nav class="hero-nav">
+            <div class="logo-mark">
+                <svg width="32" height="32" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg">
+                    <rect x="2" y="2" width="8" height="8" rx="2" fill="#7c3aed" />
+                    <rect x="12" y="2" width="6" height="6" rx="1.5" stroke="#7c3aed" stroke-width="1.5" />
+                    <rect x="20" y="2" width="10" height="10" rx="2" fill="#06b6d4" />
+                    <rect x="2" y="14" width="6" height="6" rx="1.5" stroke="#7c3aed" stroke-width="1.5" />
+                    <rect x="12" y="12" width="8" height="8" rx="2" fill="#06b6d4" />
+                    <rect x="22" y="14" width="6" height="6" rx="1.5" stroke="#06b6d4" stroke-width="1.5" />
+                    <rect x="2" y="22" width="10" height="10" rx="2" fill="#7c3aed" />
+                    <rect x="14" y="22" width="6" height="6" rx="1.5" stroke="#7c3aed" stroke-width="1.5" />
+                    <rect x="22" y="22" width="8" height="8" rx="2" fill="#06b6d4" />
+                </svg>
+                <span class="logo-text">QRcraft</span>
+            </div>
+        </nav>
+        <div class="hero-content">
+            <h1 class="hero-title">
+                <span class="word">Create</span>
+                <span class="word">QR</span>
+                <span class="word">Codes</span>
+                <span class="word">That</span>
+                <span class="word">Feel</span>
+                <span class="word">Like</span>
+                <span class="word">Art</span>
+            </h1>
+            <p class="hero-subtitle">16 categories. Zero boring. Pure magic.</p>
+            <div class="hero-stats">
+                <div class="stat-pill"><span class="stat-number" data-target="16">0</span><span
+                        class="stat-label">Categories</span></div>
+                <div class="stat-pill"><span class="stat-number" data-target="1">0</span><span class="stat-label">Click
+                        Export</span></div>
+                <div class="stat-pill"><span class="stat-number" data-target="100">0</span><span
+                        class="stat-label">Percent Free</span></div>
+            </div>
+            <button id="hero-cta">Start Creating -&gt;</button>
+        </div>
+    </section>
+    <div id="mode-tabs">
+        <button class="tab-btn active" data-tab="create">Create QR</button>
+        <button class="tab-btn" data-tab="scan">Scan QR Code</button>
+    </div>
+    <section id="category-section">
+        <div class="section-header">
+            <p class="section-label">Choose Your QR Type</p>
+            <h2 class="section-title">What are you encoding?</h2>
+            <div class="section-actions">
+                <button id="random-category">Surprise Me</button>
+            </div>
+        </div>
+        <div class="category-grid">
+            <div class="category-card" data-category="text" data-color="#f59e0b">
+                <div class="card-glow"></div>
+                <div class="card-icon" style="background: rgba(245, 158, 11, 0.15);">
+                    <i data-lucide="type" style="width:22px;height:22px;color:#f59e0b"></i>
+                </div>
+                <span class="card-label">Plain Text</span>
+            </div>
+            <div class="category-card" data-category="url" data-color="#3b82f6">
+                <div class="card-glow"></div>
+                <div class="card-icon" style="background: rgba(59, 130, 246, 0.15);">
+                    <i data-lucide="globe" style="width:22px;height:22px;color:#3b82f6"></i>
+                </div>
+                <span class="card-label">Website URL</span>
+            </div>
+            <div class="category-card" data-category="instagram" data-color="#e1306c">
+                <div class="card-glow"></div>
+                <div class="card-icon" style="background: rgba(225, 48, 108, 0.15);">
+                    <i data-lucide="camera" style="width:22px;height:22px;color:#e1306c"></i>
+                </div>
+                <span class="card-label">Instagram</span>
+            </div>
+            <div class="category-card" data-category="whatsapp" data-color="#25d366">
+                <div class="card-glow"></div>
+                <div class="card-icon" style="background: rgba(37, 211, 102, 0.15);">
+                    <i data-lucide="message-circle" style="width:22px;height:22px;color:#25d366"></i>
+                </div>
+                <span class="card-label">WhatsApp</span>
+            </div>
+            <div class="category-card" data-category="email" data-color="#f87171">
+                <div class="card-glow"></div>
+                <div class="card-icon" style="background: rgba(248, 113, 113, 0.15);">
+                    <i data-lucide="mail" style="width:22px;height:22px;color:#f87171"></i>
+                </div>
+                <span class="card-label">Email</span>
+            </div>
+            <div class="category-card" data-category="phone" data-color="#2dd4bf">
+                <div class="card-glow"></div>
+                <div class="card-icon" style="background: rgba(45, 212, 191, 0.15);">
+                    <i data-lucide="phone" style="width:22px;height:22px;color:#2dd4bf"></i>
+                </div>
+                <span class="card-label">Phone Call</span>
+            </div>
+            <div class="category-card" data-category="sms" data-color="#a78bfa">
+                <div class="card-glow"></div>
+                <div class="card-icon" style="background: rgba(167, 139, 250, 0.15);">
+                    <i data-lucide="message-square" style="width:22px;height:22px;color:#a78bfa"></i>
+                </div>
+                <span class="card-label">SMS</span>
+            </div>
+            <div class="category-card" data-category="wifi" data-color="#38bdf8">
+                <div class="card-glow"></div>
+                <div class="card-icon" style="background: rgba(56, 189, 248, 0.15);">
+                    <i data-lucide="wifi" style="width:22px;height:22px;color:#38bdf8"></i>
+                </div>
+                <span class="card-label">Wi-Fi</span>
+            </div>
+            <div class="category-card" data-category="vcard" data-color="#fbbf24">
+                <div class="card-glow"></div>
+                <div class="card-icon" style="background: rgba(251, 191, 36, 0.15);">
+                    <i data-lucide="contact" style="width:22px;height:22px;color:#fbbf24"></i>
+                </div>
+                <span class="card-label">Contact Card</span>
+            </div>
+            <div class="category-card" data-category="location" data-color="#ef4444">
+                <div class="card-glow"></div>
+                <div class="card-icon" style="background: rgba(239, 68, 68, 0.15);">
+                    <i data-lucide="map-pin" style="width:22px;height:22px;color:#ef4444"></i>
+                </div>
+                <span class="card-label">Location</span>
+            </div>
+            <div class="category-card" data-category="youtube" data-color="#ff0000">
+                <div class="card-glow"></div>
+                <div class="card-icon" style="background: rgba(255, 0, 0, 0.15);">
+                    <i data-lucide="play" style="width:22px;height:22px;color:#ff0000"></i>
+                </div>
+                <span class="card-label">YouTube</span>
+            </div>
+            <div class="category-card" data-category="image" data-color="#e879f9">
+                <div class="card-glow"></div>
+                <div class="card-icon" style="background: rgba(232, 121, 249, 0.15);">
+                    <i data-lucide="image" style="width:22px;height:22px;color:#e879f9"></i>
+                </div>
+                <span class="card-label">Image</span>
+            </div>
+            <div class="category-card" data-category="file" data-color="#94a3b8">
+                <div class="card-glow"></div>
+                <div class="card-icon" style="background: rgba(148, 163, 184, 0.15);">
+                    <i data-lucide="file" style="width:22px;height:22px;color:#94a3b8"></i>
+                </div>
+                <span class="card-label">File / PDF</span>
+            </div>
+            <div class="category-card" data-category="twitter" data-color="#ffffff">
+                <div class="card-glow"></div>
+                <div class="card-icon" style="background: rgba(255, 255, 255, 0.1);">
+                    <i data-lucide="at-sign" style="width:22px;height:22px;color:#ffffff"></i>
+                </div>
+                <span class="card-label">Twitter / X</span>
+            </div>
+            <div class="category-card" data-category="linkedin" data-color="#0077b5">
+                <div class="card-glow"></div>
+                <div class="card-icon" style="background: rgba(0, 119, 181, 0.15);">
+                    <i data-lucide="briefcase" style="width:22px;height:22px;color:#0077b5"></i>
+                </div>
+                <span class="card-label">LinkedIn</span>
+            </div>
+            <div class="category-card" data-category="bizcard" data-color="#fcd34d">
+                <div class="card-glow"></div>
+                <div class="card-icon" style="background: rgba(252, 211, 77, 0.15);">
+                    <i data-lucide="credit-card" style="width:22px;height:22px;color:#fcd34d"></i>
+                </div>
+                <span class="card-label">Business Card</span>
+            </div>
+        </div>
+    </section>
+    <section id="form-section">
+        <div class="form-wrapper">
+            <div class="form-header">
+                <div class="form-header-left">
+                    <div class="form-header-icon"></div>
+                    <h3 class="form-category-name">Category</h3>
+                </div>
+                <button class="change-category">&lt;- Change Type</button>
+            </div>
+            <div class="form-card">
+                <div id="form-body"></div>
+            </div>
+            <div class="qr-options-panel">
+                <button class="qr-options-toggle">Customize QR</button>
+                <div class="qr-options-body">
+                    <div class="color-field form-field">
+                        <label for="qr-fg">QR Color</label>
+                        <div class="color-picker-wrapper">
+                            <span class="color-swatch" data-swatch="qr-fg"></span>
+                            <input id="qr-fg" type="color" value="#000000" />
+                        </div>
+                    </div>
+                    <div class="color-field form-field">
+                        <label for="qr-bg">Background</label>
+                        <div class="color-picker-wrapper">
+                            <span class="color-swatch" data-swatch="qr-bg"></span>
+                            <input id="qr-bg" type="color" value="#ffffff" />
+                        </div>
+                    </div>
+                    <div class="slider-field form-field">
+                        <label for="qr-size">Size: <span id="size-label">256</span>px</label>
+                        <input id="qr-size" type="range" min="128" max="1024" step="128" value="256" />
+                    </div>
+                    <div class="ecc-field form-field">
+                        <label>Error Correction</label>
+                        <div class="ecc-options">
+                            <span class="ecc-btn">L</span>
+                            <span class="ecc-btn active">M</span>
+                            <span class="ecc-btn">Q</span>
+                            <span class="ecc-btn">H</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <button id="generate-btn">Generate QR Code</button>
+        </div>
+    </section>
+    <section id="output-section">
+        <div class="output-wrapper">
+            <div class="output-card">
+                <p class="output-label">Your QR Code</p>
+                <div id="qr-container"></div>
+                <div id="qr-info"></div>
+                <div class="download-row">
+                    <button class="dl-btn" id="dl-png">Download PNG</button>
+                    <button class="dl-btn" id="dl-svg">Download SVG</button>
+                    <button class="dl-btn" id="dl-pdf">Download PDF</button>
+                    <button class="dl-btn" id="dl-copy">Copy</button>
+                </div>
+                <p class="output-footer-note">No watermarks - No account needed - 100 percent free</p>
+                <button id="make-another">&lt;- Make Another QR</button>
+            </div>
+        </div>
+    </section>
+    <div id="history-drawer">
+        <div class="drawer-overlay"></div>
+        <div class="drawer-panel">
+            <div class="drawer-header">
+                <h3>Recent QR Codes</h3>
+                <div>
+                    <button id="clear-history">Clear All</button>
+                    <button id="close-drawer">x</button>
+                </div>
+            </div>
+            <div class="drawer-body">
+                <div id="history-list"></div>
+                <div id="history-empty">
+                    <div class="qr-empty-frame"></div>
+                    <p>No history yet</p>
+                    <p>Generated QR codes will appear here</p>
+                </div>
+            </div>
+        </div>
+        <button id="history-toggle"><i data-lucide="clock"></i></button>
+    </div>
+    <section id="scanner-section">
+        <div class="scanner-wrapper">
+            <h2 class="scanner-title">Scan Any QR Code</h2>
+            <p class="scanner-sub">Point your camera at a QR code to decode it instantly</p>
+            <div class="scanner-card">
+                <div class="video-wrapper">
+                    <video id="scanner-video" autoplay playsinline muted></video>
+                    <canvas id="scanner-canvas"></canvas>
+                    <div class="scan-frame">
+                        <div class="corner tl"></div>
+                        <div class="corner tr"></div>
+                        <div class="corner bl"></div>
+                        <div class="corner br"></div>
+                        <div class="scan-line"></div>
+                    </div>
+                </div>
+            </div>
+            <div id="scan-result">
+                <div class="result-header">QR Code Detected</div>
+                <p id="result-content"></p>
+                <div class="result-actions">
+                    <button id="result-copy">Copy Text</button>
+                    <button id="result-open">Open Link</button>
+                </div>
+            </div>
+            <div class="scanner-controls">
+                <button id="start-scanner">Start Camera</button>
+                <button id="stop-scanner" style="display:none;">Stop</button>
+            </div>
+            <div id="scanner-error"></div>
+        </div>
+    </section>
+    <footer id="main-footer">
+        <p style="text-align:center;color:var(--text-secondary);">QRcraft - Built for creative QR experiences</p>
+    </footer>
+
+    <script>
+        let currentCategory = 'text';
+        let currentCategoryColor = '#38bdf8';
+        let mouseX = window.innerWidth / 2;
+        let mouseY = window.innerHeight / 2;
+        let imageDataUrl = null;
+        let imageFileName = '';
+        let uploadedImageUrl = '';
+        let uploadedFileUrl = '';
+        let fileMeta = { name: '', size: 0 };
+        let glitchScheduled = false;
+        let scanStream = null;
+        let scanRunning = false;
+        let lastScanData = '';
+        let lastInteraction = Date.now();
+        let isRaining = false;
+        let rainInterval = null;
+        let rapidClickCount = 0;
+        let rapidClickTimer = null;
+        let toastQueue = [];
+        let toastActive = false;
+        let qrLibraryReady = false;
+        let memoryHistory = [];
+        let storageBlocked = false;
+        let fileUploadInFlight = false;
+        let fileUploadPromise = null;
+        let imageUploadInFlight = false;
+        let imageUploadPromise = null;
+        let autoUploadTriggerTimer = null;
+        let autoUploadCueRunning = false;
+        let uploadStoryInterval = null;
+        let uploadStoryToken = 0;
+        const hasFinePointer = window.matchMedia && window.matchMedia('(any-pointer: fine)').matches;
+        const hasCoarsePointer = window.matchMedia && window.matchMedia('(any-pointer: coarse)').matches;
+        const isTouchDevice = hasCoarsePointer && !hasFinePointer;
+
+        const categoryMeta = {
+            text: { label: 'Plain Text', icon: 'type', color: '#f59e0b' },
+            url: { label: 'Website URL', icon: 'globe', color: '#3b82f6' },
+            instagram: { label: 'Instagram', icon: 'camera', color: '#e1306c' },
+            whatsapp: { label: 'WhatsApp', icon: 'message-circle', color: '#25d366' },
+            email: { label: 'Email', icon: 'mail', color: '#f87171' },
+            phone: { label: 'Phone Call', icon: 'phone', color: '#2dd4bf' },
+            sms: { label: 'SMS', icon: 'message-square', color: '#a78bfa' },
+            wifi: { label: 'Wi-Fi', icon: 'wifi', color: '#38bdf8' },
+            vcard: { label: 'Contact Card', icon: 'contact', color: '#fbbf24' },
+            location: { label: 'Location', icon: 'map-pin', color: '#ef4444' },
+            youtube: { label: 'YouTube', icon: 'play', color: '#ff0000' },
+            image: { label: 'Image', icon: 'image', color: '#e879f9' },
+            file: { label: 'File / PDF', icon: 'file', color: '#94a3b8' },
+            twitter: { label: 'Twitter / X', icon: 'at-sign', color: '#ffffff' },
+            linkedin: { label: 'LinkedIn', icon: 'briefcase', color: '#0077b5' },
+            bizcard: { label: 'Business Card', icon: 'credit-card', color: '#fcd34d' }
+        };
+
+        function hexToRgba(hex, alpha) {
+            const cleaned = hex.replace('#', '');
+            const bigint = parseInt(cleaned, 16);
+            const r = (bigint >> 16) & 255;
+            const g = (bigint >> 8) & 255;
+            const b = bigint & 255;
+            return 'rgba(' + r + ',' + g + ',' + b + ',' + alpha + ')';
+        }
+
+        function updateAccentColor(hex) {
+            const dot = document.getElementById('cursor-dot');
+            const ring = document.getElementById('cursor-ring');
+            if (dot) {
+                dot.style.background = hex;
+            }
+            if (ring) {
+                ring.style.borderColor = hex + 'cc';
+            }
+            document.documentElement.style.setProperty('--focus-color', hex);
+            document.documentElement.style.setProperty('--ambient-color', hexToRgba(hex, 0.08));
+        }
+
+        function initCursor() {
+            const dot = document.getElementById('cursor-dot');
+            const ring = document.getElementById('cursor-ring');
+            let ringX = mouseX;
+            let ringY = mouseY;
+            let cursorVisible = false;
+
+            document.addEventListener('mousemove', (event) => {
+                mouseX = event.clientX;
+                mouseY = event.clientY;
+                dot.style.left = mouseX + 'px';
+                dot.style.top = mouseY + 'px';
+                if (!cursorVisible) {
+                    dot.style.opacity = '1';
+                    ring.style.opacity = '1';
+                    cursorVisible = true;
+                }
+            });
+
+            const hoverSelector = 'button, a, .category-card, [data-interactive]';
+
+            document.addEventListener('mouseover', (event) => {
+                const target = event.target.closest(hoverSelector);
+                if (target) {
+                    dot.classList.add('cursor-hover');
+                    ring.classList.add('cursor-hover');
+                }
+            });
+
+            document.addEventListener('mouseout', (event) => {
+                const from = event.target.closest(hoverSelector);
+                if (!from) {
+                    return;
+                }
+                const to = event.relatedTarget ? event.relatedTarget.closest(hoverSelector) : null;
+                if (!to) {
+                    dot.classList.remove('cursor-hover');
+                    ring.classList.remove('cursor-hover');
+                }
+            });
+
+            const animateRing = () => {
+                ringX += (mouseX - ringX) * 0.14;
+                ringY += (mouseY - ringY) * 0.14;
+                ring.style.left = ringX + 'px';
+                ring.style.top = ringY + 'px';
+                requestAnimationFrame(animateRing);
+            };
+
+            animateRing();
+        }
+
+        function loadScriptOnce(src) {
+            return new Promise((resolve, reject) => {
+                const existing = document.querySelector('script[src="' + src + '"]');
+                if (existing) {
+                    if (existing.dataset.loaded === '1') {
+                        resolve(true);
+                        return;
+                    }
+                    existing.addEventListener('load', () => resolve(true));
+                    existing.addEventListener('error', () => reject(new Error('Failed to load ' + src)));
+                    return;
+                }
+                const script = document.createElement('script');
+                script.src = src;
+                script.async = true;
+                script.onload = () => {
+                    script.dataset.loaded = '1';
+                    resolve(true);
+                };
+                script.onerror = () => reject(new Error('Failed to load ' + src));
+                document.head.appendChild(script);
+            });
+        }
+
+        function ensureQRCodeLibrary() {
+            if (window.QRCode) {
+                qrLibraryReady = true;
+                return Promise.resolve(true);
+            }
+            const fallbacks = [
+                'https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js',
+                'https://cdn.jsdelivr.net/gh/davidshimjs/qrcodejs@master/qrcode.min.js'
+            ];
+            return new Promise((resolve) => {
+                let index = 0;
+                const tryNext = () => {
+                    if (window.QRCode) {
+                        qrLibraryReady = true;
+                        resolve(true);
+                        return;
+                    }
+                    if (index >= fallbacks.length) {
+                        qrLibraryReady = false;
+                        resolve(false);
+                        return;
+                    }
+                    loadScriptOnce(fallbacks[index])
+                        .then(() => {
+                            qrLibraryReady = !!window.QRCode;
+                            resolve(qrLibraryReady);
+                        })
+                        .catch(() => {
+                            index += 1;
+                            tryNext();
+                        });
+                };
+                tryNext();
+            });
+        }
+
+        function getStoredHistory() {
+            if (storageBlocked) {
+                return Array.isArray(memoryHistory) ? memoryHistory : [];
+            }
+            try {
+                const raw = localStorage.getItem('qrcraft_history') || '[]';
+                const parsed = JSON.parse(raw);
+                if (Array.isArray(parsed)) {
+                    memoryHistory = parsed;
+                    return parsed;
+                }
+            } catch (error) {
+                storageBlocked = true;
+            }
+            return Array.isArray(memoryHistory) ? memoryHistory : [];
+        }
+
+        function setStoredHistory(items) {
+            memoryHistory = Array.isArray(items) ? items : [];
+            if (storageBlocked) {
+                return;
+            }
+            try {
+                localStorage.setItem('qrcraft_history', JSON.stringify(memoryHistory));
+            } catch (error) {
+                storageBlocked = true;
+            }
+        }
+
+        function clearStoredHistory() {
+            memoryHistory = [];
+            if (storageBlocked) {
+                return;
+            }
+            try {
+                localStorage.removeItem('qrcraft_history');
+            } catch (error) {
+                storageBlocked = true;
+            }
+        }
+
+        function sanitizeThumbnailSrc(src) {
+            const fallbackThumb = 'data:image/svg+xml,%3Csvg%20xmlns=%22http://www.w3.org/2000/svg%22%20width=%2264%22%20height=%2264%22%3E%3Crect%20width=%2264%22%20height=%2264%22%20fill=%22white%22/%3E%3Crect%20x=%2212%22%20y=%2212%22%20width=%2240%22%20height=%2240%22%20fill=%22none%22%20stroke=%22%2394a3b8%22%20stroke-width=%223%22/%3E%3C/svg%3E';
+            if (typeof src !== 'string') {
+                return fallbackThumb;
+            }
+            const trimmed = src.trim();
+            if (trimmed.indexOf('data:image/') === 0 || trimmed.indexOf('blob:') === 0 || trimmed.indexOf('http') === 0) {
+                return trimmed;
+            }
+            return fallbackThumb;
+        }
+
+        function renderQrFallbackImage(content, size, fgColor, bgColor, errorLevel) {
+            const qrContainer = document.getElementById('qr-container');
+            const fg = fgColor.replace('#', '');
+            const bg = bgColor.replace('#', '');
+            const img = document.createElement('img');
+            img.alt = 'Generated QR';
+            img.width = size;
+            img.height = size;
+            img.style.display = 'block';
+            img.style.borderRadius = '12px';
+            img.style.background = bgColor;
+            img.src = 'https://api.qrserver.com/v1/create-qr-code/?size=' + size + 'x' + size
+                + '&data=' + encodeURIComponent(content)
+                + '&color=' + fg
+                + '&bgcolor=' + bg
+                + '&ecc=' + encodeURIComponent(errorLevel || 'M');
+            img.onerror = () => {
+                showToast('Could not render QR. Check internet and disable strict tracking for this page.', 'error');
+            };
+            qrContainer.appendChild(img);
+        }
+
+        function initParticles() {
+            const canvas = document.getElementById('particle-canvas');
+            const ctx = canvas.getContext('2d');
+            const colors = [
+                'rgba(124,58,237,0.5)',
+                'rgba(6,182,212,0.5)',
+                'rgba(232,121,249,0.4)',
+                'rgba(59,130,246,0.5)',
+                'rgba(167,139,250,0.4)'
+            ];
+
+            const resizeCanvas = () => {
+                canvas.width = window.innerWidth;
+                canvas.height = window.innerHeight;
+            };
+
+            resizeCanvas();
+            window.addEventListener('resize', resizeCanvas);
+
+            const particles = Array.from({ length: 110 }, () => ({
+                x: Math.random() * canvas.width,
+                y: Math.random() * canvas.height,
+                vx: Math.random() - 0.5,
+                vy: Math.random() - 0.5,
+                radius: 1 + Math.random() * 1.5,
+                color: colors[Math.floor(Math.random() * colors.length)]
+            }));
+
+            const drawConnections = () => {
+                for (let i = 0; i < particles.length; i += 1) {
+                    for (let j = i + 1; j < particles.length; j += 1) {
+                        const dx = particles[i].x - particles[j].x;
+                        const dy = particles[i].y - particles[j].y;
+                        const dist = Math.sqrt(dx * dx + dy * dy);
+                        if (dist < 120) {
+                            const opacity = (1 - dist / 120) * 0.12;
+                            ctx.strokeStyle = 'rgba(255,255,255,' + opacity + ')';
+                            ctx.lineWidth = 1;
+                            ctx.beginPath();
+                            ctx.moveTo(particles[i].x, particles[i].y);
+                            ctx.lineTo(particles[j].x, particles[j].y);
+                            ctx.stroke();
+                        }
+                    }
+                }
+            };
+
+            const animate = () => {
+                ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+                for (let i = 0; i < particles.length; i += 1) {
+                    const p = particles[i];
+                    p.x += p.vx;
+                    p.y += p.vy;
+
+                    if (p.x <= 0 || p.x >= canvas.width) {
+                        p.vx *= -1;
+                    }
+                    if (p.y <= 0 || p.y >= canvas.height) {
+                        p.vy *= -1;
+                    }
+
+                    const dx = p.x - mouseX;
+                    const dy = p.y - mouseY;
+                    const dist = Math.sqrt(dx * dx + dy * dy);
+                    if (dist < 100) {
+                        const force = (100 - dist) / 100 * 0.35;
+                        const nx = dx / (dist || 1);
+                        const ny = dy / (dist || 1);
+                        p.vx += nx * force;
+                        p.vy += ny * force;
+                    }
+
+                    p.vx *= 0.97;
+                    p.vy *= 0.97;
+                }
+
+                drawConnections();
+
+                for (let i = 0; i < particles.length; i += 1) {
+                    const p = particles[i];
+                    ctx.beginPath();
+                    ctx.fillStyle = p.color;
+                    ctx.arc(p.x, p.y, p.radius, 0, Math.PI * 2);
+                    ctx.fill();
+                }
+
+                requestAnimationFrame(animate);
+            };
+
+            animate();
+        }
+
+        function initBackground() {
+            if (!isTouchDevice) {
+                initCursor();
+            }
+            initParticles();
+        }
+
+        function initHero() {
+            const words = document.querySelectorAll('.hero-title .word');
+            words.forEach((word, index) => {
+                setTimeout(() => {
+                    word.classList.add('visible');
+                }, 300 + index * 120);
+                word.addEventListener('mouseover', () => {
+                    word.classList.add('word-bouncing');
+                });
+                word.addEventListener('animationend', () => {
+                    word.classList.remove('word-bouncing');
+                });
+            });
+
+            const stats = document.querySelectorAll('.stat-number');
+            stats.forEach((stat) => {
+                const target = Number(stat.dataset.target || 0);
+                const startTime = performance.now();
+                const duration = 1500;
+                const animate = (now) => {
+                    const progress = Math.min((now - startTime) / duration, 1);
+                    const eased = 1 - Math.pow(1 - progress, 3);
+                    stat.textContent = Math.round(target * eased);
+                    if (progress < 1) {
+                        requestAnimationFrame(animate);
+                    }
+                };
+                requestAnimationFrame(animate);
+            });
+
+            const heroCta = document.getElementById('hero-cta');
+            heroCta.addEventListener('click', () => {
+                const modeTabs = document.getElementById('mode-tabs');
+                const categorySection = document.getElementById('category-section');
+                modeTabs.style.display = 'flex';
+                categorySection.style.display = 'block';
+                modeTabs.classList.add('fade-in');
+                categorySection.classList.add('fade-in');
+                categorySection.scrollIntoView({ behavior: 'smooth' });
+            });
+        }
+
+        function initModeTabs() {
+            const tabs = document.querySelectorAll('.tab-btn');
+            const categorySection = document.getElementById('category-section');
+            const formSection = document.getElementById('form-section');
+            const outputSection = document.getElementById('output-section');
+            const scannerSection = document.getElementById('scanner-section');
+
+            tabs.forEach((tab) => {
+                tab.addEventListener('click', () => {
+                    tabs.forEach((btn) => btn.classList.remove('active'));
+                    tab.classList.add('active');
+                    const target = tab.dataset.tab;
+                    if (target === 'scan') {
+                        categorySection.style.display = 'none';
+                        formSection.style.display = 'none';
+                        outputSection.style.display = 'none';
+                        scannerSection.style.display = 'block';
+                        initScanner();
+                    } else {
+                        scannerSection.style.display = 'none';
+                        categorySection.style.display = 'block';
+                        const hasSelection = document.querySelector('.category-card.selected');
+                        formSection.style.display = hasSelection ? 'block' : 'none';
+                        const hasQr = document.getElementById('qr-container').children.length > 0;
+                        outputSection.style.display = hasQr ? 'block' : 'none';
+                    }
+                });
+            });
+        }
+
+        function initCategoryGrid() {
+            const cards = document.querySelectorAll('.category-card');
+            cards.forEach((card) => {
+                card.addEventListener('click', () => {
+                    selectCategoryCard(card);
+                    rapidClickCount += 1;
+                    if (rapidClickCount === 1) {
+                        rapidClickTimer = setTimeout(() => {
+                            rapidClickCount = 0;
+                        }, 2000);
+                    }
+                    if (rapidClickCount >= 4) {
+                        clearTimeout(rapidClickTimer);
+                        rapidClickCount = 0;
+                        const grid = document.querySelector('.category-grid');
+                        grid.classList.add('shuffle-spin');
+                        setTimeout(() => grid.classList.remove('shuffle-spin'), 550);
+                        showToast('Explorer mode unlocked', 'info');
+                    }
+                });
+            });
+
+            const randomButton = document.getElementById('random-category');
+            randomButton.addEventListener('click', () => {
+                const grid = document.querySelector('.category-grid');
+                grid.classList.add('shuffle-spin');
+                setTimeout(() => {
+                    grid.classList.remove('shuffle-spin');
+                    const randomIndex = Math.floor(Math.random() * cards.length);
+                    cards[randomIndex].click();
+                }, 350);
+            });
+        }
+
+        function selectCategoryCard(card) {
+            const categoryId = card.dataset.category;
+            const color = card.dataset.color;
+            currentCategory = categoryId;
+            currentCategoryColor = color;
+
+            const cards = document.querySelectorAll('.category-card');
+            cards.forEach((item) => {
+                item.classList.remove('selected');
+                item.classList.remove('dimmed');
+                item.style.boxShadow = '';
+            });
+            card.classList.add('selected');
+            cards.forEach((item) => {
+                if (item !== card) {
+                    item.classList.add('dimmed');
+                }
+            });
+
+            card.style.boxShadow = '0 0 0 2px ' + color + ', 0 0 40px ' + color + 'aa';
+            const glow = card.querySelector('.card-glow');
+            if (glow) {
+                glow.style.background = 'radial-gradient(circle, ' + color + ' 0%, transparent 70%)';
+            }
+
+            updateAccentColor(color);
+
+            const rect = card.getBoundingClientRect();
+            burstParticles(rect.left + rect.width / 2, rect.top + rect.height / 2, color);
+
+            setTimeout(() => {
+                const formSection = document.getElementById('form-section');
+                formSection.style.display = 'block';
+                formSection.classList.add('fade-in');
+                renderForm(categoryId);
+                formSection.scrollIntoView({ behavior: 'smooth' });
+            }, 200);
+
+            if (window.lucide) {
+                lucide.createIcons();
+            }
+        }
+
+        function selectCategoryById(categoryId) {
+            const card = document.querySelector('.category-card[data-category="' + categoryId + '"]');
+            if (card) {
+                selectCategoryCard(card);
+            }
+        }
+
+        function burstParticles(x, y, color) {
+            const canvas = document.getElementById('confetti-canvas');
+            const ctx = canvas.getContext('2d');
+            canvas.width = window.innerWidth;
+            canvas.height = window.innerHeight;
+
+            const particles = Array.from({ length: 12 }, () => {
+                const angle = Math.random() * Math.PI * 2;
+                const speed = 3 + Math.random() * 5;
+                return {
+                    x,
+                    y,
+                    vx: Math.cos(angle) * speed,
+                    vy: Math.sin(angle) * speed,
+                    radius: 3 + Math.random() * 3,
+                    opacity: 1
+                };
+            });
+
+            const animate = () => {
+                ctx.clearRect(0, 0, canvas.width, canvas.height);
+                particles.forEach((p) => {
+                    p.x += p.vx;
+                    p.y += p.vy;
+                    p.opacity -= 0.025;
+                    ctx.globalAlpha = Math.max(p.opacity, 0);
+                    ctx.beginPath();
+                    ctx.fillStyle = color;
+                    ctx.arc(p.x, p.y, p.radius, 0, Math.PI * 2);
+                    ctx.fill();
+                });
+                ctx.globalAlpha = 1;
+                if (particles.some((p) => p.opacity > 0)) {
+                    requestAnimationFrame(animate);
+                }
+            };
+
+            animate();
+        }
+
+        function renderForm(categoryId) {
+            const formBody = document.getElementById('form-body');
+            const headerName = document.querySelector('.form-category-name');
+            const headerIcon = document.querySelector('.form-header-icon');
+            const meta = categoryMeta[categoryId];
+            if (headerName && meta) {
+                headerName.textContent = meta.label;
+            }
+            if (headerIcon && meta) {
+                headerIcon.innerHTML = '<i data-lucide="' + meta.icon + '"></i>';
+            }
+
+            let html = '';
+            if (categoryId === 'text') {
+                html = '<div class="form-field">'
+                    + '<label for="f-text">Text</label>'
+                    + '<textarea id="f-text" rows="5" placeholder="Enter your message, note, or any text..."></textarea>'
+                    + '</div>';
+            } else if (categoryId === 'url') {
+                html = '<div class="form-field">'
+                    + '<label for="f-url">Website URL</label>'
+                    + '<input type="url" id="f-url" placeholder="https://example.com" autocomplete="off">'
+                    + '</div>'
+                    + '<div class="preview-text" id="url-preview">Paste a URL above</div>'
+                    + '<button type="button" class="field-btn" id="url-test">Open and Test -></button>';
+            } else if (categoryId === 'instagram') {
+                html = '<div class="form-field">'
+                    + '<label for="f-ig">Instagram Username</label>'
+                    + '<input type="text" id="f-ig" placeholder="username (without @)" autocomplete="off">'
+                    + '</div>'
+                    + '<div class="preview-text" id="ig-preview">instagram.com/</div>';
+            } else if (categoryId === 'whatsapp') {
+                html = '<div class="form-field">'
+                    + '<label for="f-wa-phone">WhatsApp Number</label>'
+                    + '<input type="text" id="f-wa-phone" placeholder="+91 98765 43210" autocomplete="off">'
+                    + '</div>'
+                    + '<div class="form-field">'
+                    + '<label for="f-wa-msg">Message</label>'
+                    + '<textarea id="f-wa-msg" rows="3" placeholder="Pre-filled message (optional)"></textarea>'
+                    + '</div>';
+            } else if (categoryId === 'email') {
+                html = '<div class="form-field">'
+                    + '<label for="f-em-to">Recipient</label>'
+                    + '<input type="email" id="f-em-to" placeholder="recipient@example.com" autocomplete="off">'
+                    + '</div>'
+                    + '<div class="form-field">'
+                    + '<label for="f-em-sub">Subject</label>'
+                    + '<input type="text" id="f-em-sub" placeholder="Subject line" autocomplete="off">'
+                    + '</div>'
+                    + '<div class="form-field">'
+                    + '<label for="f-em-body">Body</label>'
+                    + '<textarea id="f-em-body" rows="4" placeholder="Email body..."></textarea>'
+                    + '</div>';
+            } else if (categoryId === 'phone') {
+                html = '<div class="form-field">'
+                    + '<label for="f-phone">Phone Number</label>'
+                    + '<input type="tel" id="f-phone" placeholder="+1 234 567 8900" autocomplete="off">'
+                    + '</div>';
+            } else if (categoryId === 'sms') {
+                html = '<div class="form-field">'
+                    + '<label for="f-sms-phone">Phone Number</label>'
+                    + '<input type="tel" id="f-sms-phone" placeholder="+1 234 567 8900" autocomplete="off">'
+                    + '</div>'
+                    + '<div class="form-field">'
+                    + '<label for="f-sms-msg">Message</label>'
+                    + '<textarea id="f-sms-msg" rows="3" placeholder="Your SMS message..."></textarea>'
+                    + '</div>';
+            } else if (categoryId === 'wifi') {
+                html = '<div class="form-field">'
+                    + '<label for="f-wifi-ssid">Network Name (SSID)</label>'
+                    + '<input type="text" id="f-wifi-ssid" placeholder="Network Name (SSID)" autocomplete="off">'
+                    + '</div>'
+                    + '<div class="form-field">'
+                    + '<label for="f-wifi-pass">Password</label>'
+                    + '<div class="input-row">'
+                    + '<input type="password" id="f-wifi-pass" placeholder="Password" autocomplete="off">'
+                    + '<button type="button" class="field-btn" id="wifi-toggle">Show</button>'
+                    + '</div>'
+                    + '</div>'
+                    + '<div class="form-field">'
+                    + '<label for="f-wifi-sec">Security</label>'
+                    + '<select id="f-wifi-sec">'
+                    + '<option value="WPA">WPA</option>'
+                    + '<option value="WEP">WEP</option>'
+                    + '<option value="nopass">nopass</option>'
+                    + '</select>'
+                    + '</div>'
+                    + '<div class="form-field">'
+                    + '<label><input type="checkbox" id="f-wifi-hidden"> Hidden Network</label>'
+                    + '</div>';
+            } else if (categoryId === 'vcard') {
+                html = '<div class="form-field"><label for="f-vc-fn">First Name</label><input type="text" id="f-vc-fn" placeholder="First name" autocomplete="off"></div>'
+                    + '<div class="form-field"><label for="f-vc-ln">Last Name</label><input type="text" id="f-vc-ln" placeholder="Last name" autocomplete="off"></div>'
+                    + '<div class="form-field"><label for="f-vc-phone">Phone</label><input type="text" id="f-vc-phone" placeholder="Phone" autocomplete="off"></div>'
+                    + '<div class="form-field"><label for="f-vc-email">Email</label><input type="email" id="f-vc-email" placeholder="Email" autocomplete="off"></div>'
+                    + '<div class="form-field"><label for="f-vc-org">Organization</label><input type="text" id="f-vc-org" placeholder="Organization" autocomplete="off"></div>'
+                    + '<div class="form-field"><label for="f-vc-web">Website</label><input type="text" id="f-vc-web" placeholder="Website" autocomplete="off"></div>';
+            } else if (categoryId === 'location') {
+                html = '<div class="form-field"><label for="f-lat">Latitude</label><input type="text" id="f-lat" placeholder="Latitude e.g. 28.6139" autocomplete="off"></div>'
+                    + '<div class="form-field"><label for="f-lng">Longitude</label><input type="text" id="f-lng" placeholder="Longitude e.g. 77.2090" autocomplete="off"></div>'
+                    + '<div class="form-field"><label for="f-loc-name">Place name</label><input type="text" id="f-loc-name" placeholder="Place name (for your reference)" autocomplete="off"></div>'
+                    + '<div class="field-note">Find coordinates on Google Maps - right-click any location</div>';
+            } else if (categoryId === 'youtube') {
+                html = '<div class="form-field">'
+                    + '<label for="f-yt">YouTube URL or ID</label>'
+                    + '<input type="text" id="f-yt" placeholder="Paste YouTube URL or video ID" autocomplete="off">'
+                    + '</div>'
+                    + '<img id="yt-thumb" alt="YouTube thumbnail" style="display:none;width:100%;border-radius:12px;" />';
+            } else if (categoryId === 'image') {
+                html = '<div class="form-field">'
+                    + '<label for="f-image">Upload Image</label>'
+                    + '<input type="file" id="f-image" accept="image/*">'
+                    + '</div>'
+                    + '<div class="form-field">'
+                    + '<label for="f-image-url">Public Image URL</label>'
+                    + '<div class="input-row">'
+                    + '<input type="url" id="f-image-url" placeholder="https://..." autocomplete="off">'
+                    + '<button type="button" class="field-btn" id="f-image-upload">Upload and Link</button>'
+                    + '</div>'
+                    + '</div>'
+                    + '<div id="img-preview" style="display:none;"><img alt="Preview" style="width:100%;border-radius:12px;" /></div>'
+                    + '<div class="field-note">Image QR must contain a public URL. Use Upload and Link for automatic temporary hosting.</div>';
+            } else if (categoryId === 'file') {
+                html = '<div class="form-field">'
+                    + '<label for="f-file">Upload File</label>'
+                    + '<input type="file" id="f-file" accept="*/*">'
+                    + '</div>'
+                    + '<div class="form-field">'
+                    + '<label for="f-file-url">Public File URL</label>'
+                    + '<div class="input-row">'
+                    + '<input type="url" id="f-file-url" placeholder="https://..." autocomplete="off">'
+                    + '<button type="button" class="field-btn" id="f-file-upload">Upload and Link</button>'
+                    + '</div>'
+                    + '</div>'
+                    + '<div id="file-info" style="display:none;color:var(--text-secondary);"></div>'
+                    + '<div class="field-note">File QR must contain a public URL. Use Upload and Link for automatic temporary hosting.</div>';
+            } else if (categoryId === 'twitter') {
+                html = '<div class="form-field">'
+                    + '<label for="f-tw">Twitter Username</label>'
+                    + '<input type="text" id="f-tw" placeholder="username (without @)" autocomplete="off">'
+                    + '</div>'
+                    + '<div class="preview-text" id="tw-preview">twitter.com/</div>';
+            } else if (categoryId === 'linkedin') {
+                html = '<div class="form-field">'
+                    + '<label for="f-li">LinkedIn</label>'
+                    + '<input type="text" id="f-li" placeholder="linkedin.com/in/yourprofile or just username" autocomplete="off">'
+                    + '</div>';
+            } else if (categoryId === 'bizcard') {
+                html = '<div class="form-field"><label for="f-biz-name">Full Name</label><input type="text" id="f-biz-name" placeholder="Full name" autocomplete="off"></div>'
+                    + '<div class="form-field"><label for="f-biz-title">Job Title</label><input type="text" id="f-biz-title" placeholder="Job title" autocomplete="off"></div>'
+                    + '<div class="form-field"><label for="f-biz-co">Company</label><input type="text" id="f-biz-co" placeholder="Company" autocomplete="off"></div>'
+                    + '<div class="form-field"><label for="f-biz-phone">Phone</label><input type="text" id="f-biz-phone" placeholder="Phone" autocomplete="off"></div>'
+                    + '<div class="form-field"><label for="f-biz-email">Email</label><input type="email" id="f-biz-email" placeholder="Email" autocomplete="off"></div>'
+                    + '<div class="form-field"><label for="f-biz-web">Website</label><input type="text" id="f-biz-web" placeholder="Website" autocomplete="off"></div>'
+                    + '<div class="form-field"><label for="f-biz-addr">Address</label><input type="text" id="f-biz-addr" placeholder="Address" autocomplete="off"></div>';
+            }
+
+            formBody.innerHTML = html;
+            bindFormEvents(categoryId);
+            if (window.lucide) {
+                lucide.createIcons();
+            }
+        }
+
+        function bindFormEvents(categoryId) {
+            imageDataUrl = null;
+            imageFileName = '';
+            uploadedImageUrl = '';
+            uploadedFileUrl = '';
+            fileMeta = { name: '', size: 0 };
+            if (autoUploadTriggerTimer) {
+                clearTimeout(autoUploadTriggerTimer);
+                autoUploadTriggerTimer = null;
+            }
+
+            if (categoryId === 'url') {
+                const urlInput = document.getElementById('f-url');
+                const preview = document.getElementById('url-preview');
+                const testButton = document.getElementById('url-test');
+                urlInput.addEventListener('input', () => {
+                    preview.textContent = urlInput.value.trim() || 'Paste a URL above';
+                });
+                testButton.addEventListener('click', () => {
+                    const value = urlInput.value.trim();
+                    if (!value) {
+                        showToast('Enter a URL first', 'error');
+                        return;
+                    }
+                    const url = value.startsWith('http') ? value : 'https://' + value;
+                    window.open(url, '_blank');
+                });
+            }
+
+            if (categoryId === 'instagram') {
+                const igInput = document.getElementById('f-ig');
+                const preview = document.getElementById('ig-preview');
+                igInput.addEventListener('input', () => {
+                    const value = igInput.value.replace('@', '').trim();
+                    preview.textContent = 'instagram.com/' + value;
+                });
+            }
+
+            if (categoryId === 'twitter') {
+                const twInput = document.getElementById('f-tw');
+                const preview = document.getElementById('tw-preview');
+                twInput.addEventListener('input', () => {
+                    const value = twInput.value.replace('@', '').trim();
+                    preview.textContent = 'twitter.com/' + value;
+                });
+            }
+
+            if (categoryId === 'wifi') {
+                const passInput = document.getElementById('f-wifi-pass');
+                const toggle = document.getElementById('wifi-toggle');
+                toggle.addEventListener('click', () => {
+                    const isHidden = passInput.type === 'password';
+                    passInput.type = isHidden ? 'text' : 'password';
+                    toggle.textContent = isHidden ? 'Hide' : 'Show';
+                });
+            }
+
+            if (categoryId === 'youtube') {
+                const ytInput = document.getElementById('f-yt');
+                const thumb = document.getElementById('yt-thumb');
+                ytInput.addEventListener('input', () => {
+                    const id = extractYouTubeId(ytInput.value.trim());
+                    if (id) {
+                        thumb.src = 'https://img.youtube.com/vi/' + id + '/hqdefault.jpg';
+                        thumb.style.display = 'block';
+                    } else {
+                        thumb.style.display = 'none';
+                    }
+                });
+            }
+
+            if (categoryId === 'image') {
+                const imageInput = document.getElementById('f-image');
+                const imageUrlInput = document.getElementById('f-image-url');
+                const uploadBtn = document.getElementById('f-image-upload');
+                const previewWrapper = document.getElementById('img-preview');
+                const previewImg = previewWrapper.querySelector('img');
+
+                imageUrlInput.addEventListener('input', () => {
+                    const url = imageUrlInput.value.trim();
+                    uploadedImageUrl = '';
+                    if (url && autoUploadTriggerTimer) {
+                        clearTimeout(autoUploadTriggerTimer);
+                        autoUploadTriggerTimer = null;
+                    }
+                    if (url.startsWith('http')) {
+                        previewImg.src = url;
+                        previewWrapper.style.display = 'block';
+                    } else if (!(imageInput.files && imageInput.files.length > 0)) {
+                        previewWrapper.style.display = 'none';
+                    }
+                });
+
+                imageInput.addEventListener('change', () => {
+                    const file = imageInput.files[0];
+                    if (!file) {
+                        previewWrapper.style.display = 'none';
+                        imageDataUrl = null;
+                        imageFileName = '';
+                        uploadedImageUrl = '';
+                        return;
+                    }
+                    imageFileName = file.name;
+                    uploadedImageUrl = '';
+                    imageUrlInput.value = '';
+                    const reader = new FileReader();
+                    reader.onload = () => {
+                        previewImg.src = reader.result;
+                        previewWrapper.style.display = 'block';
+                        if (file.size <= 500) {
+                            imageDataUrl = reader.result;
+                        } else {
+                            imageDataUrl = null;
+                        }
+                    };
+                    reader.readAsDataURL(file);
+
+                    queueAutoUpload(uploadBtn, () => imageUploadInFlight || !!imageUploadPromise);
+                });
+
+                uploadBtn.addEventListener('click', async () => {
+                    await runImageUploadFlow({
+                        imageInput,
+                        imageUrlInput,
+                        uploadBtn,
+                        previewWrapper,
+                        previewImg,
+                        showSuccessToast: true,
+                        showMissingFileToast: true,
+                        showFailureToast: true
+                    });
+                });
+            }
+
+            if (categoryId === 'file') {
+                const fileInput = document.getElementById('f-file');
+                const info = document.getElementById('file-info');
+                const fileUrlInput = document.getElementById('f-file-url');
+                const uploadBtn = document.getElementById('f-file-upload');
+
+                if (fileUrlInput) {
+                    fileUrlInput.addEventListener('input', () => {
+                        const typedUrl = fileUrlInput.value.trim();
+                        if (typedUrl) {
+                            uploadedFileUrl = '';
+                            if (autoUploadTriggerTimer) {
+                                clearTimeout(autoUploadTriggerTimer);
+                                autoUploadTriggerTimer = null;
+                            }
+                            info.textContent = typedUrl;
+                            info.style.display = 'block';
+                        } else if (!(fileInput.files && fileInput.files.length > 0)) {
+                            info.style.display = 'none';
+                        }
+                    });
+                }
+
+                fileInput.addEventListener('change', () => {
+                    const file = fileInput.files[0];
+                    if (!file) {
+                        info.style.display = 'none';
+                        fileMeta = { name: '', size: 0 };
+                        uploadedFileUrl = '';
+                        return;
+                    }
+                    fileMeta = { name: file.name, size: file.size };
+                    uploadedFileUrl = '';
+                    if (fileUrlInput) {
+                        fileUrlInput.value = '';
+                    }
+                    info.textContent = file.name + ' (' + formatFileSize(file.size) + ')';
+                    info.style.display = 'block';
+                    queueAutoUpload(uploadBtn, () => fileUploadInFlight || !!fileUploadPromise);
+                });
+
+                uploadBtn.addEventListener('click', async () => {
+                    await runFileUploadFlow({
+                        fileInput,
+                        fileUrlInput,
+                        uploadBtn,
+                        info,
+                        showSuccessToast: true,
+                        showMissingFileToast: true,
+                        showFailureToast: true
+                    });
+                });
+            }
+        }
+
+        function resetFieldErrors() {
+            const errors = document.querySelectorAll('.error-msg');
+            errors.forEach((error) => error.remove());
+        }
+
+        function showFieldError(input, message) {
+            const wrapper = input.closest('.form-field') || input.parentElement;
+            if (!wrapper) {
+                return;
+            }
+            const error = document.createElement('div');
+            error.className = 'error-msg';
+            error.textContent = message;
+            wrapper.appendChild(error);
+        }
+
+        function validateForm(categoryId) {
+            resetFieldErrors();
+            const formCard = document.querySelector('.form-card');
+
+            const requiredMap = {
+                text: ['f-text'],
+                url: ['f-url'],
+                instagram: ['f-ig'],
+                whatsapp: ['f-wa-phone'],
+                email: ['f-em-to'],
+                phone: ['f-phone'],
+                sms: ['f-sms-phone'],
+                wifi: ['f-wifi-ssid'],
+                vcard: ['f-vc-fn'],
+                location: ['f-lat', 'f-lng'],
+                youtube: ['f-yt'],
+                image: [],
+                file: [],
+                twitter: ['f-tw'],
+                linkedin: ['f-li'],
+                bizcard: ['f-biz-name']
+            };
+
+            const requiredFields = requiredMap[categoryId] || [];
+            for (let i = 0; i < requiredFields.length; i += 1) {
+                const fieldId = requiredFields[i];
+                const field = document.getElementById(fieldId);
+                if (!field) {
+                    continue;
+                }
+                const isFile = field.type === 'file';
+                const value = isFile ? (field.files && field.files.length > 0) : field.value.trim();
+                if (!value) {
+                    showFieldError(field, 'This field is required');
+                    formCard.classList.add('shake');
+                    setTimeout(() => formCard.classList.remove('shake'), 400);
+                    return false;
+                }
+            }
+
+            if (categoryId === 'wifi') {
+                const sec = document.getElementById('f-wifi-sec');
+                const pass = document.getElementById('f-wifi-pass');
+                if (sec && sec.value !== 'nopass' && !pass.value.trim()) {
+                    showFieldError(pass, 'Password required for secured networks');
+                    formCard.classList.add('shake');
+                    setTimeout(() => formCard.classList.remove('shake'), 400);
+                    return false;
+                }
+            }
+
+            if (categoryId === 'image') {
+                const imageUrl = document.getElementById('f-image-url');
+                const imageFile = document.getElementById('f-image');
+                const hasUrl = imageUrl && imageUrl.value.trim();
+                const hasFile = imageFile && imageFile.files && imageFile.files.length > 0;
+                if (!hasUrl && !hasFile) {
+                    showFieldError(imageUrl || imageFile, 'Provide image URL or upload image file');
+                    formCard.classList.add('shake');
+                    setTimeout(() => formCard.classList.remove('shake'), 400);
+                    return false;
+                }
+            }
+
+            if (categoryId === 'file') {
+                const fileUrl = document.getElementById('f-file-url');
+                const fileInput = document.getElementById('f-file');
+                const hasUrl = fileUrl && fileUrl.value.trim();
+                const hasFile = fileInput && fileInput.files && fileInput.files.length > 0;
+                if (!hasUrl && !hasFile) {
+                    showFieldError(fileUrl || fileInput, 'Provide file URL or upload file');
+                    formCard.classList.add('shake');
+                    setTimeout(() => formCard.classList.remove('shake'), 400);
+                    return false;
+                }
+            }
+
+            return true;
+        }
+
+        async function uploadFileToTmpfiles(file) {
+            const formData = new FormData();
+            formData.append('file', file, file.name);
+            const response = await fetch('https://tmpfiles.org/api/v1/upload', {
+                method: 'POST',
+                body: formData
+            });
+            if (!response.ok) {
+                throw new Error('Upload failed with status ' + response.status);
+            }
+            const payload = await response.json();
+            const rawUrl = payload && payload.data ? payload.data.url : '';
+            if (!rawUrl) {
+                throw new Error('No URL returned');
+            }
+            const secureUrl = rawUrl.replace('http://', 'https://');
+            return secureUrl.replace('://tmpfiles.org/', '://tmpfiles.org/dl/');
+        }
+
+        async function uploadImageToTmpfiles(file) {
+            return uploadFileToTmpfiles(file);
+        }
+
+        async function runImageUploadFlow(options = {}) {
+            const imageInput = options.imageInput || document.getElementById('f-image');
+            const imageUrlInput = options.imageUrlInput || document.getElementById('f-image-url');
+            const uploadBtn = options.uploadBtn || document.getElementById('f-image-upload');
+            const previewWrapper = options.previewWrapper || document.getElementById('img-preview');
+            const previewImg = options.previewImg || (previewWrapper ? previewWrapper.querySelector('img') : null);
+            const file = imageInput && imageInput.files ? imageInput.files[0] : null;
+
+            if (!file) {
+                if (options.showMissingFileToast !== false) {
+                    showToast('Please choose an image first', 'error');
+                }
+                return '';
+            }
+
+            if (imageUploadInFlight && imageUploadPromise) {
+                return imageUploadPromise;
+            }
+
+            imageUploadInFlight = true;
+            if (uploadBtn) {
+                uploadBtn.disabled = true;
+                uploadBtn.textContent = 'Uploading...';
+            }
+
+            const storyToken = startUploadStory(file.name, 'image');
+            imageUploadPromise = uploadImageToTmpfiles(file).then((publicUrl) => {
+                if (isDemoOrLocalUrl(publicUrl)) {
+                    throw new Error('Uploader returned non-public URL');
+                }
+                uploadedImageUrl = publicUrl;
+                if (imageUrlInput) {
+                    imageUrlInput.value = publicUrl;
+                }
+                if (previewImg) {
+                    previewImg.src = publicUrl;
+                }
+                if (previewWrapper) {
+                    previewWrapper.style.display = 'block';
+                }
+                finishUploadStory(
+                    storyToken,
+                    true,
+                    'Sky relay complete. Image link is now public.',
+                    'Scan-ready URL is waiting in the box.'
+                );
+                if (options.showSuccessToast !== false) {
+                    showToast('Image URL ready. Generate QR now.', 'success');
+                }
+                return publicUrl;
+            }).catch((error) => {
+                finishUploadStory(
+                    storyToken,
+                    false,
+                    'Image relay failed mid-route.',
+                    'Please retry with internet enabled on local server.'
+                );
+                if (options.showFailureToast !== false) {
+                    showToast('Image upload failed. Run via local server and check internet.', 'error');
+                }
+                return '';
+            }).finally(() => {
+                imageUploadInFlight = false;
+                if (uploadBtn) {
+                    uploadBtn.disabled = false;
+                    uploadBtn.textContent = 'Upload and Link';
+                }
+                imageUploadPromise = null;
+            });
+
+            return imageUploadPromise;
+        }
+
+        async function runFileUploadFlow(options = {}) {
+            const fileInput = options.fileInput || document.getElementById('f-file');
+            const fileUrlInput = options.fileUrlInput || document.getElementById('f-file-url');
+            const uploadBtn = options.uploadBtn || document.getElementById('f-file-upload');
+            const info = options.info || document.getElementById('file-info');
+            const file = fileInput && fileInput.files ? fileInput.files[0] : null;
+
+            if (!file) {
+                if (options.showMissingFileToast !== false) {
+                    showToast('Please choose a file first', 'error');
+                }
+                return '';
+            }
+
+            if (fileUploadInFlight && fileUploadPromise) {
+                return fileUploadPromise;
+            }
+
+            fileUploadInFlight = true;
+            if (uploadBtn) {
+                uploadBtn.disabled = true;
+                uploadBtn.textContent = 'Uploading...';
+            }
+
+            const storyToken = startUploadStory(file.name, 'file');
+            fileUploadPromise = uploadFileToTmpfiles(file).then((publicUrl) => {
+                if (isDemoOrLocalUrl(publicUrl)) {
+                    throw new Error('Uploader returned non-public URL');
+                }
+                uploadedFileUrl = publicUrl;
+                if (fileUrlInput) {
+                    fileUrlInput.value = publicUrl;
+                }
+                if (info) {
+                    info.textContent = publicUrl;
+                    info.style.display = 'block';
+                }
+                finishUploadStory(
+                    storyToken,
+                    true,
+                    'Bridge complete. URL forged for ' + truncateText(file.name, 20) + '.',
+                    'Now any phone can open it after scanning.'
+                );
+                if (options.showSuccessToast !== false) {
+                    showToast('File URL ready. Generate QR now.', 'success');
+                }
+                return publicUrl;
+            }).catch((error) => {
+                finishUploadStory(
+                    storyToken,
+                    false,
+                    'The cloud bridge flickered and stopped.',
+                    'Please retry with internet enabled on local server.'
+                );
+                if (options.showFailureToast !== false) {
+                    showToast('File upload failed. Run via local server and check internet.', 'error');
+                }
+                return '';
+            }).finally(() => {
+                fileUploadInFlight = false;
+                if (uploadBtn) {
+                    uploadBtn.disabled = false;
+                    uploadBtn.textContent = 'Upload and Link';
+                }
+                fileUploadPromise = null;
+            });
+
+            return fileUploadPromise;
+        }
+
+        async function resolveQRContent(categoryId) {
+            if (categoryId === 'image') {
+                const imageUrlInput = document.getElementById('f-image-url');
+                const fileInput = document.getElementById('f-image');
+                const uploadBtn = document.getElementById('f-image-upload');
+                const previewWrapper = document.getElementById('img-preview');
+                const previewImg = previewWrapper ? previewWrapper.querySelector('img') : null;
+                const file = fileInput && fileInput.files ? fileInput.files[0] : null;
+                const typedUrl = imageUrlInput ? imageUrlInput.value.trim() : '';
+                if (typedUrl) {
+                    const normalizedTypedUrl = normalizeHttpUrl(typedUrl);
+                    if (!isDemoOrLocalUrl(normalizedTypedUrl)) {
+                        return normalizedTypedUrl;
+                    }
+                    if (!file) {
+                        showToast('This image URL is demo/local and will not open on phone. Upload again.', 'error', 3400);
+                        return '';
+                    }
+                    if (imageUrlInput) {
+                        imageUrlInput.value = '';
+                    }
+                }
+                if (uploadedImageUrl && !isDemoOrLocalUrl(uploadedImageUrl)) {
+                    return uploadedImageUrl;
+                }
+                if (imageUploadInFlight && imageUploadPromise) {
+                    return imageUploadPromise;
+                }
+                if (!file) {
+                    return '';
+                }
+                return runImageUploadFlow({
+                    imageInput: fileInput,
+                    imageUrlInput,
+                    uploadBtn,
+                    previewWrapper,
+                    previewImg,
+                    showSuccessToast: false,
+                    showMissingFileToast: false,
+                    showFailureToast: true
+                });
+            }
+
+            if (categoryId === 'file') {
+                const fileUrlInput = document.getElementById('f-file-url');
+                const fileInput = document.getElementById('f-file');
+                const uploadBtn = document.getElementById('f-file-upload');
+                const info = document.getElementById('file-info');
+                const file = fileInput && fileInput.files ? fileInput.files[0] : null;
+                const typedUrl = fileUrlInput ? fileUrlInput.value.trim() : '';
+                if (typedUrl) {
+                    const normalizedTypedUrl = normalizeHttpUrl(typedUrl);
+                    if (!isDemoOrLocalUrl(normalizedTypedUrl)) {
+                        return normalizedTypedUrl;
+                    }
+                    if (!file) {
+                        showToast('This file URL is demo/local and will not open on phone. Upload again.', 'error', 3400);
+                        return '';
+                    }
+                    if (fileUrlInput) {
+                        fileUrlInput.value = '';
+                    }
+                }
+                if (uploadedFileUrl && !isDemoOrLocalUrl(uploadedFileUrl)) {
+                    return uploadedFileUrl;
+                }
+                if (fileUploadInFlight && fileUploadPromise) {
+                    return fileUploadPromise;
+                }
+                if (!file) {
+                    return '';
+                }
+                return runFileUploadFlow({
+                    fileInput,
+                    fileUrlInput,
+                    uploadBtn,
+                    info,
+                    showSuccessToast: false,
+                    showMissingFileToast: false,
+                    showFailureToast: true
+                });
+            }
+
+            return getQRContent(categoryId);
+        }
+
+        function getQRContent(categoryId) {
+            if (categoryId === 'text') {
+                return document.getElementById('f-text').value.trim();
+            }
+            if (categoryId === 'url') {
+                const value = document.getElementById('f-url').value.trim();
+                return value.startsWith('http') ? value : 'https://' + value;
+            }
+            if (categoryId === 'instagram') {
+                const user = document.getElementById('f-ig').value.replace('@', '').trim();
+                return 'https://instagram.com/' + user;
+            }
+            if (categoryId === 'whatsapp') {
+                const phone = document.getElementById('f-wa-phone').value.replace(/\D/g, '');
+                const msg = document.getElementById('f-wa-msg').value.trim();
+                return 'https://wa.me/' + phone + (msg ? '?text=' + encodeURIComponent(msg) : '');
+            }
+            if (categoryId === 'email') {
+                const to = document.getElementById('f-em-to').value.trim();
+                const sub = document.getElementById('f-em-sub').value.trim();
+                const body = document.getElementById('f-em-body').value.trim();
+                return 'mailto:' + to + '?subject=' + encodeURIComponent(sub) + '&body=' + encodeURIComponent(body);
+            }
+            if (categoryId === 'phone') {
+                return 'tel:' + document.getElementById('f-phone').value.replace(/\s/g, '');
+            }
+            if (categoryId === 'sms') {
+                const phone = document.getElementById('f-sms-phone').value.replace(/\D/g, '');
+                const msg = document.getElementById('f-sms-msg').value.trim();
+                return msg ? 'sms:' + phone + '?body=' + encodeURIComponent(msg) : 'sms:' + phone;
+            }
+            if (categoryId === 'wifi') {
+                const sec = document.getElementById('f-wifi-sec').value;
+                const ssid = document.getElementById('f-wifi-ssid').value.trim();
+                const pass = document.getElementById('f-wifi-pass').value.trim();
+                const hidden = document.getElementById('f-wifi-hidden').checked;
+                return 'WIFI:T:' + sec + ';S:' + ssid + ';P:' + pass + ';H:' + hidden + ';;';
+            }
+            if (categoryId === 'vcard') {
+                const fn = document.getElementById('f-vc-fn').value.trim();
+                const ln = document.getElementById('f-vc-ln').value.trim();
+                const phone = document.getElementById('f-vc-phone').value.trim();
+                const email = document.getElementById('f-vc-email').value.trim();
+                const org = document.getElementById('f-vc-org').value.trim();
+                const web = document.getElementById('f-vc-web').value.trim();
+                return 'BEGIN:VCARD\nVERSION:3.0\nFN:' + fn + ' ' + ln + '\nORG:' + org
+                    + '\nTEL:' + phone + '\nEMAIL:' + email + '\nURL:' + web + '\nEND:VCARD';
+            }
+            if (categoryId === 'location') {
+                const lat = document.getElementById('f-lat').value.trim();
+                const lng = document.getElementById('f-lng').value.trim();
+                return 'geo:' + lat + ',' + lng;
+            }
+            if (categoryId === 'youtube') {
+                const input = document.getElementById('f-yt').value.trim();
+                const id = extractYouTubeId(input);
+                return id ? 'https://youtube.com/watch?v=' + id : input;
+            }
+            if (categoryId === 'image') {
+                const urlInput = document.getElementById('f-image-url');
+                const typedUrl = urlInput ? urlInput.value.trim() : '';
+                if (typedUrl) {
+                    return typedUrl.startsWith('http') ? typedUrl : 'https://' + typedUrl;
+                }
+                const input = document.getElementById('f-image');
+                if (imageDataUrl) {
+                    return imageDataUrl;
+                }
+                const file = input.files[0];
+                return file ? 'Image: ' + file.name : '';
+            }
+            if (categoryId === 'file') {
+                const urlInput = document.getElementById('f-file-url');
+                const typedUrl = urlInput ? urlInput.value.trim() : '';
+                if (typedUrl) {
+                    return typedUrl.startsWith('http') ? typedUrl : 'https://' + typedUrl;
+                }
+                const input = document.getElementById('f-file');
+                const file = input.files[0];
+                return file ? 'File: ' + file.name + ' (' + formatFileSize(file.size) + ')' : '';
+            }
+            if (categoryId === 'twitter') {
+                const user = document.getElementById('f-tw').value.replace('@', '').trim();
+                return 'https://twitter.com/' + user;
+            }
+            if (categoryId === 'linkedin') {
+                const val = document.getElementById('f-li').value.trim();
+                return val.startsWith('http') ? val : 'https://linkedin.com/in/' + val;
+            }
+            if (categoryId === 'bizcard') {
+                const name = document.getElementById('f-biz-name').value.trim();
+                const title = document.getElementById('f-biz-title').value.trim();
+                const company = document.getElementById('f-biz-co').value.trim();
+                const phone = document.getElementById('f-biz-phone').value.trim();
+                const email = document.getElementById('f-biz-email').value.trim();
+                const web = document.getElementById('f-biz-web').value.trim();
+                const addr = document.getElementById('f-biz-addr').value.trim();
+                return 'BEGIN:VCARD\nVERSION:3.0\nFN:' + name + '\nTITLE:' + title + '\nORG:' + company
+                    + '\nTEL:' + phone + '\nEMAIL:' + email + '\nURL:' + web + '\nADR:' + addr + '\nEND:VCARD';
+            }
+            return '';
+        }
+
+        function extractYouTubeId(input) {
+            if (!input) {
+                return '';
+            }
+            const match = input.match(/(?:v=|youtu\.be\/|embed\/)([A-Za-z0-9_-]{6,})/);
+            return match ? match[1] : '';
+        }
+
+        function formatFileSize(bytes) {
+            if (!bytes) {
+                return '0 B';
+            }
+            const units = ['B', 'KB', 'MB', 'GB'];
+            const index = Math.min(Math.floor(Math.log(bytes) / Math.log(1024)), units.length - 1);
+            const size = (bytes / Math.pow(1024, index)).toFixed(index === 0 ? 0 : 1);
+            return size + ' ' + units[index];
+        }
+
+        function normalizeHttpUrl(raw) {
+            if (typeof raw !== 'string') {
+                return '';
+            }
+            const value = raw.trim();
+            if (!value) {
+                return '';
+            }
+            return /^https?:\/\//i.test(value) ? value : 'https://' + value;
+        }
+
+        function isDemoOrLocalUrl(rawUrl) {
+            const normalized = normalizeHttpUrl(rawUrl);
+            if (!normalized) {
+                return false;
+            }
+            try {
+                const parsed = new URL(normalized);
+                const host = (parsed.hostname || '').toLowerCase();
+                if (!host) {
+                    return true;
+                }
+                if (host === 'example.com' || host.endsWith('.example.com')) {
+                    return true;
+                }
+                if (host === 'localhost' || host === '127.0.0.1' || host === '0.0.0.0') {
+                    return true;
+                }
+                if (host.endsWith('.local') || host === 'test' || host.endsWith('.test')) {
+                    return true;
+                }
+            } catch (error) {
+                return true;
+            }
+            return false;
+        }
+
+        function playAutoUploadHandClick(button, onTap, onDone) {
+            const hand = document.getElementById('auto-upload-hand');
+            if (!hand || !button) {
+                if (typeof onTap === 'function') {
+                    onTap();
+                }
+                if (typeof onDone === 'function') {
+                    onDone();
+                }
+                return;
+            }
+
+            const prefersReducedMotion = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+            if (prefersReducedMotion) {
+                if (typeof onTap === 'function') {
+                    onTap();
+                }
+                if (typeof onDone === 'function') {
+                    onDone();
+                }
+                return;
+            }
+
+            const rect = button.getBoundingClientRect();
+            const startX = window.innerWidth + 120;
+            const startY = Math.max(64, rect.top + rect.height * 0.5 - 20);
+            const targetX = rect.left + rect.width * 0.78;
+            const targetY = rect.top + rect.height * 0.52 - 20;
+
+            hand.style.left = startX + 'px';
+            hand.style.top = startY + 'px';
+            hand.style.transform = 'translate(0,0) rotate(-12deg)';
+            hand.classList.remove('tap');
+            hand.classList.add('visible');
+
+            requestAnimationFrame(() => {
+                hand.style.transform = 'translate(' + (targetX - startX) + 'px,' + (targetY - startY) + 'px) rotate(-5deg)';
+            });
+
+            setTimeout(() => {
+                hand.classList.add('tap');
+                if (typeof onTap === 'function') {
+                    onTap();
+                }
+            }, 760);
+
+            setTimeout(() => {
+                hand.classList.remove('tap');
+            }, 960);
+
+            setTimeout(() => {
+                hand.classList.remove('visible');
+                hand.style.transform = 'translate(120px,24px) rotate(8deg)';
+                if (typeof onDone === 'function') {
+                    onDone();
+                }
+            }, 1320);
+        }
+
+        function startUploadStory(fileName, uploadType = 'file') {
+            const overlay = document.getElementById('upload-story-overlay');
+            const lineEl = document.getElementById('upload-story-line');
+            const sublineEl = document.getElementById('upload-story-subline');
+            const progressEl = document.getElementById('upload-story-progress');
+            if (!overlay || !lineEl || !sublineEl || !progressEl) {
+                return 0;
+            }
+
+            uploadStoryToken += 1;
+            const token = uploadStoryToken;
+            overlay.dataset.storyToken = String(token);
+            overlay.classList.remove('story-success', 'story-error');
+            overlay.classList.add('visible');
+
+            const safeName = truncateText(fileName || 'your file', 26);
+            const isImageUpload = uploadType === 'image';
+            const stages = [
+                {
+                    line: 'Nova picked up ' + safeName + ' from your desk.',
+                    subline: isImageUpload
+                        ? 'She calibrates pixels and wakes the cloud gate.'
+                        : 'She verifies format and wakes the cloud gate.',
+                    progress: 14
+                },
+                {
+                    line: 'Ari opens a neon bridge from the right tower.',
+                    subline: isImageUpload
+                        ? 'Both sides secure image chunks for transfer.'
+                        : 'Both sides encrypt chunks for safe transfer.',
+                    progress: 43
+                },
+                {
+                    line: 'They sprint packets across the skyline.',
+                    subline: 'A temporary public URL is being minted now.',
+                    progress: 74
+                },
+                {
+                    line: 'Final handshake with the vault is running.',
+                    subline: isImageUpload
+                        ? 'Almost done. Preparing your image link.'
+                        : 'Almost done. Preparing your shareable link.',
+                    progress: 92
+                }
+            ];
+
+            let stageIndex = 0;
+            const applyStage = (stage) => {
+                if (overlay.dataset.storyToken !== String(token)) {
+                    return;
+                }
+                lineEl.textContent = stage.line;
+                sublineEl.textContent = stage.subline;
+                progressEl.style.width = stage.progress + '%';
+            };
+
+            applyStage(stages[0]);
+            if (uploadStoryInterval) {
+                clearInterval(uploadStoryInterval);
+            }
+            uploadStoryInterval = setInterval(() => {
+                if (stageIndex < stages.length - 1) {
+                    stageIndex += 1;
+                    applyStage(stages[stageIndex]);
+                }
+            }, 1050);
+
+            return token;
+        }
+
+        function finishUploadStory(token, success, lineText, sublineText) {
+            const overlay = document.getElementById('upload-story-overlay');
+            const lineEl = document.getElementById('upload-story-line');
+            const sublineEl = document.getElementById('upload-story-subline');
+            const progressEl = document.getElementById('upload-story-progress');
+            if (!overlay || !lineEl || !sublineEl || !progressEl) {
+                return;
+            }
+            if (String(token) !== overlay.dataset.storyToken) {
+                return;
+            }
+
+            if (uploadStoryInterval) {
+                clearInterval(uploadStoryInterval);
+                uploadStoryInterval = null;
+            }
+
+            overlay.classList.remove('story-success', 'story-error');
+            overlay.classList.add(success ? 'story-success' : 'story-error');
+            lineEl.textContent = lineText || (success
+                ? 'Upload complete. Your link is forged.'
+                : 'The cloud bridge was interrupted.');
+            sublineEl.textContent = sublineText || (success
+                ? 'Ready to encode this URL into your QR.'
+                : 'Try again with internet enabled on local server.');
+            progressEl.style.width = success ? '100%' : '96%';
+
+            setTimeout(() => {
+                if (String(token) !== overlay.dataset.storyToken) {
+                    return;
+                }
+                overlay.classList.remove('visible', 'story-success', 'story-error');
+                progressEl.style.width = '0%';
+            }, success ? 950 : 1300);
+        }
+
+        function queueAutoUpload(uploadBtn, isBusyFn) {
+            if (!uploadBtn || autoUploadCueRunning || (typeof isBusyFn === 'function' && isBusyFn())) {
+                return;
+            }
+            if (autoUploadTriggerTimer) {
+                clearTimeout(autoUploadTriggerTimer);
+            }
+            autoUploadTriggerTimer = setTimeout(() => {
+                if (!document.body.contains(uploadBtn) || uploadBtn.disabled || (typeof isBusyFn === 'function' && isBusyFn())) {
+                    return;
+                }
+                autoUploadCueRunning = true;
+                uploadBtn.classList.add('auto-uploading');
+                playAutoUploadHandClick(uploadBtn, () => {
+                    if (!uploadBtn.disabled && !(typeof isBusyFn === 'function' && isBusyFn())) {
+                        uploadBtn.click();
+                    }
+                }, () => {
+                    uploadBtn.classList.remove('auto-uploading');
+                    autoUploadCueRunning = false;
+                });
+            }, 260);
+        }
+
+        function truncateText(text, maxLen) {
+            if (text.length <= maxLen) {
+                return text;
+            }
+            return text.slice(0, maxLen - 3) + '...';
+        }
+
+        async function generateQR() {
+            if (!validateForm(currentCategory)) {
+                return;
+            }
+            const content = await resolveQRContent(currentCategory);
+            if (!content) {
+                showToast('Please enter a value', 'error');
+                return;
+            }
+
+            if ((currentCategory === 'file' || currentCategory === 'image') && isDemoOrLocalUrl(content)) {
+                showToast('Invalid public URL detected. Please upload again to generate working QR.', 'error', 3400);
+                return;
+            }
+
+            const fgColor = document.getElementById('qr-fg').value;
+            const bgColor = document.getElementById('qr-bg').value;
+            const size = Number(document.getElementById('qr-size').value) || 256;
+            const activeEcc = document.querySelector('.ecc-btn.active');
+            const errorLevel = activeEcc ? activeEcc.textContent : 'M';
+
+            const button = document.getElementById('generate-btn');
+            button.disabled = true;
+            button.innerHTML = '<span class="btn-spinner"></span>Generating...';
+
+            const qrContainer = document.getElementById('qr-container');
+            qrContainer.innerHTML = '';
+            qrContainer.classList.remove('revealed');
+            qrContainer.style.setProperty('--qr-glow', hexToRgba(currentCategoryColor, 0.4));
+
+            const wave = document.createElement('div');
+            wave.className = 'btn-wave';
+            button.appendChild(wave);
+            setTimeout(() => wave.remove(), 600);
+
+            setTimeout(() => {
+                if (window.QRCode) {
+                    new QRCode(qrContainer, {
+                        text: content,
+                        width: size,
+                        height: size,
+                        colorDark: fgColor,
+                        colorLight: bgColor,
+                        correctLevel: QRCode.CorrectLevel[errorLevel]
+                    });
+                } else {
+                    renderQrFallbackImage(content, size, fgColor, bgColor, errorLevel);
+                }
+            }, 100);
+
+            setTimeout(() => {
+                button.disabled = false;
+                button.textContent = 'Generate QR Code';
+
+                const info = document.getElementById('qr-info');
+                const meta = categoryMeta[currentCategory];
+                info.textContent = meta.label + ' - ' + truncateText(content, 48);
+
+                const outputSection = document.getElementById('output-section');
+                outputSection.style.display = 'block';
+                outputSection.classList.add('fade-in');
+
+                showQRReveal();
+                outputSection.scrollIntoView({ behavior: 'smooth' });
+
+                const customization = { fgColor, bgColor, size, errorLevel };
+                const thumb = createHistoryThumbnail();
+                saveToHistory(currentCategory, content, customization, thumb);
+
+                if (!glitchScheduled) {
+                    glitchScheduled = true;
+                    scheduleGlitch();
+                }
+            }, 400);
+        }
+
+        function showQRReveal() {
+            const qrContainer = document.getElementById('qr-container');
+            qrContainer.classList.add('blooming');
+            requestAnimationFrame(() => {
+                qrContainer.classList.add('bloom-open');
+            });
+
+            setTimeout(() => {
+                qrContainer.classList.remove('blooming');
+                qrContainer.classList.remove('bloom-open');
+                qrContainer.classList.add('revealed');
+            }, 300);
+
+            setTimeout(() => {
+                const ring = document.createElement('div');
+                ring.className = 'ring-pulse';
+                ring.style.background = 'radial-gradient(circle, transparent 40%, ' + currentCategoryColor + ' 41%, transparent 60%)';
+                qrContainer.appendChild(ring);
+                ring.addEventListener('animationend', () => ring.remove());
+            }, 500);
+
+            setTimeout(() => {
+                launchConfetti();
+            }, 700);
+        }
+
+        function launchConfetti(x, y, color) {
+            const canvas = document.getElementById('confetti-canvas');
+            const ctx = canvas.getContext('2d');
+            canvas.width = window.innerWidth;
+            canvas.height = window.innerHeight;
+
+            const qrRect = document.getElementById('qr-container').getBoundingClientRect();
+            const originX = x || qrRect.left + qrRect.width / 2;
+            const originY = y || qrRect.top + qrRect.height / 2;
+            const baseColor = color || currentCategoryColor;
+            const colorChoices = [baseColor, '#f59e0b', '#06b6d4', '#e879f9', '#3b82f6'];
+
+            const particles = Array.from({ length: 22 }, () => {
+                const angle = Math.random() * Math.PI * 2;
+                const speed = 5 + Math.random() * 8;
+                return {
+                    x: originX,
+                    y: originY,
+                    vx: Math.cos(angle) * speed,
+                    vy: -8 - Math.random() * 6,
+                    radius: 4 + Math.random() * 6,
+                    color: colorChoices[Math.floor(Math.random() * colorChoices.length)],
+                    rotation: Math.random() * 360,
+                    rotSpeed: -6 + Math.random() * 12,
+                    shape: Math.random() > 0.5 ? 'rect' : 'circle',
+                    opacity: 1
+                };
+            });
+
+            const animate = () => {
+                ctx.clearRect(0, 0, canvas.width, canvas.height);
+                particles.forEach((p) => {
+                    p.vy += 0.4;
+                    p.x += p.vx;
+                    p.y += p.vy;
+                    p.rotation += p.rotSpeed;
+                    p.opacity -= 0.013;
+                    ctx.save();
+                    ctx.globalAlpha = Math.max(p.opacity, 0);
+                    ctx.translate(p.x, p.y);
+                    ctx.rotate((p.rotation * Math.PI) / 180);
+                    ctx.fillStyle = p.color;
+                    if (p.shape === 'rect') {
+                        ctx.fillRect(-4, -4, 8, 8);
+                    } else {
+                        ctx.beginPath();
+                        ctx.arc(0, 0, p.radius / 2, 0, Math.PI * 2);
+                        ctx.fill();
+                    }
+                    ctx.restore();
+                });
+                if (particles.some((p) => p.opacity > 0)) {
+                    requestAnimationFrame(animate);
+                }
+            };
+
+            animate();
+        }
+
+        function scheduleGlitch() {
+            const delay = Math.random() * 4000 + 7000;
+            setTimeout(() => {
+                const qrContainer = document.getElementById('qr-container');
+                if (qrContainer.classList.contains('revealed')) {
+                    qrContainer.classList.add('glitching');
+                    setTimeout(() => {
+                        qrContainer.classList.remove('glitching');
+                    }, 220);
+                }
+                scheduleGlitch();
+            }, delay);
+        }
+
+        function getQRCanvasOrImage() {
+            const canvas = document.querySelector('#qr-container canvas');
+            const img = document.querySelector('#qr-container img');
+            return { canvas, img };
+        }
+
+        function downloadPNG() {
+            const { canvas, img } = getQRCanvasOrImage();
+            let dataUrl = '';
+            if (canvas) {
+                dataUrl = canvas.toDataURL('image/png');
+            } else if (img) {
+                const tempCanvas = document.createElement('canvas');
+                tempCanvas.width = img.naturalWidth;
+                tempCanvas.height = img.naturalHeight;
+                const ctx = tempCanvas.getContext('2d');
+                ctx.drawImage(img, 0, 0);
+                dataUrl = tempCanvas.toDataURL('image/png');
+            }
+            if (!dataUrl) {
+                showToast('QR not ready', 'error');
+                return;
+            }
+            const link = document.createElement('a');
+            link.href = dataUrl;
+            link.download = 'qrcraft-' + currentCategory + '-' + Date.now() + '.png';
+            document.body.appendChild(link);
+            link.click();
+            link.remove();
+        }
+
+        function downloadSVG() {
+            const { canvas, img } = getQRCanvasOrImage();
+            let dataUrl = '';
+            let width = 0;
+            let height = 0;
+            if (canvas) {
+                dataUrl = canvas.toDataURL('image/png');
+                width = canvas.width;
+                height = canvas.height;
+            } else if (img) {
+                const tempCanvas = document.createElement('canvas');
+                tempCanvas.width = img.naturalWidth;
+                tempCanvas.height = img.naturalHeight;
+                const ctx = tempCanvas.getContext('2d');
+                ctx.drawImage(img, 0, 0);
+                dataUrl = tempCanvas.toDataURL('image/png');
+                width = tempCanvas.width;
+                height = tempCanvas.height;
+            }
+            if (!dataUrl) {
+                showToast('QR not ready', 'error');
+                return;
+            }
+            const svgStr = '<svg xmlns="http://www.w3.org/2000/svg" width="' + width + '" height="' + height + '">'
+                + '<image href="' + dataUrl + '" width="' + width + '" height="' + height + '" />'
+                + '</svg>';
+            const blob = new Blob([svgStr], { type: 'image/svg+xml' });
+            const url = URL.createObjectURL(blob);
+            const link = document.createElement('a');
+            link.href = url;
+            link.download = 'qrcraft-' + currentCategory + '-' + Date.now() + '.svg';
+            document.body.appendChild(link);
+            link.click();
+            link.remove();
+            URL.revokeObjectURL(url);
+        }
+
+        function downloadPDF() {
+            const outputCard = document.querySelector('.output-card');
+            if (!outputCard || typeof html2canvas !== 'function') {
+                showToast('PDF export unavailable', 'error');
+                return;
+            }
+            html2canvas(outputCard, { backgroundColor: '#0a0a0f', scale: 2 }).then((canvas) => {
+                const imgData = canvas.toDataURL('image/png');
+                const printWin = window.open('', '_blank');
+                if (!printWin) {
+                    showToast('Popup blocked', 'error');
+                    return;
+                }
+
+                const doc = printWin.document;
+                doc.open();
+                doc.write('<!DOCTYPE html><html><head><title>QRcraft Export</title></head><body></body></html>');
+                doc.close();
+
+                const style = doc.createElement('style');
+                style.textContent = 'body{background:#0a0a0f;display:flex;align-items:center;justify-content:center;min-height:100vh;margin:0;font-family:sans-serif;color:white;} .qr-print{text-align:center;padding:40px;} .qr-print img{max-width:400px;border-radius:12px;} .qr-print p{margin-top:16px;opacity:0.6;font-size:14px;}';
+                doc.head.appendChild(style);
+
+                const wrap = doc.createElement('div');
+                wrap.className = 'qr-print';
+                const img = doc.createElement('img');
+                img.src = imgData;
+                img.alt = 'QR';
+                const note = doc.createElement('p');
+                note.textContent = 'Generated by QRcraft - ' + currentCategory.toUpperCase();
+                wrap.appendChild(img);
+                wrap.appendChild(note);
+                doc.body.appendChild(wrap);
+
+                setTimeout(() => {
+                    printWin.focus();
+                    printWin.print();
+                }, 500);
+            }).catch(() => {
+                showToast('Could not export PDF', 'error');
+            });
+        }
+
+        function copyToClipboard() {
+            const { canvas, img } = getQRCanvasOrImage();
+            if (!canvas && !img) {
+                showToast('QR not ready', 'error');
+                return;
+            }
+            const button = document.getElementById('dl-copy');
+            const doFallback = (dataUrl) => {
+                const textarea = document.createElement('textarea');
+                textarea.value = dataUrl;
+                document.body.appendChild(textarea);
+                textarea.select();
+                document.execCommand('copy');
+                textarea.remove();
+                button.textContent = 'Copied';
+                setTimeout(() => {
+                    button.textContent = 'Copy';
+                }, 2000);
+            };
+
+            const sourceCanvas = canvas || (() => {
+                const tempCanvas = document.createElement('canvas');
+                tempCanvas.width = img.naturalWidth;
+                tempCanvas.height = img.naturalHeight;
+                const ctx = tempCanvas.getContext('2d');
+                ctx.drawImage(img, 0, 0);
+                return tempCanvas;
+            })();
+
+            sourceCanvas.toBlob((blob) => {
+                if (!blob || !navigator.clipboard || !window.ClipboardItem) {
+                    doFallback(sourceCanvas.toDataURL('image/png'));
+                    showToast('Copied to clipboard', 'success');
+                    return;
+                }
+                const item = new ClipboardItem({ 'image/png': blob });
+                navigator.clipboard.write([item]).then(() => {
+                    button.textContent = 'Copied';
+                    setTimeout(() => {
+                        button.textContent = 'Copy';
+                    }, 2000);
+                    showToast('Copied to clipboard', 'success');
+                }).catch(() => {
+                    doFallback(sourceCanvas.toDataURL('image/png'));
+                    showToast('Copied to clipboard', 'success');
+                });
+            });
+        }
+
+        function showToast(message, type = 'info', duration = 2500) {
+            toastQueue.push({ message, type, duration });
+            if (!toastActive) {
+                processToastQueue();
+            }
+        }
+
+        function processToastQueue() {
+            if (toastQueue.length === 0) {
+                toastActive = false;
+                return;
+            }
+            toastActive = true;
+            const next = toastQueue.shift();
+            const toast = document.createElement('div');
+            toast.className = 'toast';
+            if (next.type === 'success') {
+                toast.classList.add('toast-success');
+            }
+            if (next.type === 'error') {
+                toast.classList.add('toast-error');
+            }
+            const prefix = next.type === 'success' ? 'OK: ' : next.type === 'error' ? 'ERR: ' : 'INFO: ';
+            toast.textContent = prefix + next.message;
+            document.body.appendChild(toast);
+            setTimeout(() => toast.classList.add('toast-visible'), 50);
+            setTimeout(() => {
+                toast.classList.remove('toast-visible');
+                setTimeout(() => {
+                    toast.remove();
+                    processToastQueue();
+                }, 300);
+            }, next.duration);
+        }
+
+        function createHistoryThumbnail() {
+            const { canvas, img } = getQRCanvasOrImage();
+            if (!canvas && !img) {
+                return null;
+            }
+            const thumbCanvas = document.createElement('canvas');
+            thumbCanvas.width = 64;
+            thumbCanvas.height = 64;
+            const ctx = thumbCanvas.getContext('2d');
+            if (canvas) {
+                ctx.drawImage(canvas, 0, 0, 64, 64);
+            } else if (img) {
+                ctx.drawImage(img, 0, 0, 64, 64);
+            }
+            return thumbCanvas.toDataURL('image/png');
+        }
+
+        function saveToHistory(category, content, customization, thumbnailDataUrl) {
+            const stored = getStoredHistory();
+            const item = {
+                id: Date.now().toString(),
+                category,
+                content,
+                customization,
+                thumbnail: thumbnailDataUrl || '',
+                createdAt: Date.now()
+            };
+            stored.unshift(item);
+            if (stored.length > 10) {
+                stored.pop();
+            }
+            setStoredHistory(stored);
+            renderHistoryItems(stored);
+        }
+
+        function loadHistory() {
+            const stored = getStoredHistory();
+            const cleaned = stored.filter((item) => {
+                const linkCategory = item.category === 'file' || item.category === 'image';
+                if (!linkCategory) {
+                    return true;
+                }
+                const content = typeof item.content === 'string' ? item.content : '';
+                return !isDemoOrLocalUrl(content);
+            });
+
+            if (cleaned.length !== stored.length) {
+                setStoredHistory(cleaned);
+                showToast('Removed invalid demo/local links from history', 'info', 2600);
+            }
+
+            renderHistoryItems(cleaned);
+        }
+
+        function renderHistoryItems(items) {
+            const list = document.getElementById('history-list');
+            const empty = document.getElementById('history-empty');
+            list.innerHTML = '';
+            if (!items.length) {
+                empty.style.display = 'flex';
+                return;
+            }
+            empty.style.display = 'none';
+            items.forEach((item) => {
+                const entry = document.createElement('div');
+                entry.className = 'history-item';
+                entry.dataset.id = item.id;
+                const meta = categoryMeta[item.category] || {};
+                const color = meta.color || '#7c3aed';
+                const thumbSrc = sanitizeThumbnailSrc(item.thumbnail || '');
+
+                const thumb = document.createElement('img');
+                thumb.className = 'hist-thumb';
+                thumb.src = thumbSrc;
+                thumb.alt = 'QR';
+                thumb.loading = 'lazy';
+
+                const info = document.createElement('div');
+                info.className = 'hist-info';
+
+                const metaRow = document.createElement('div');
+                metaRow.className = 'hist-meta';
+                const dot = document.createElement('span');
+                dot.className = 'hist-dot';
+                dot.style.background = color;
+                const label = document.createElement('span');
+                label.textContent = meta.label || item.category;
+                const sep = document.createElement('span');
+                sep.textContent = '-';
+                const time = document.createElement('span');
+                time.textContent = formatRelativeTime(item.createdAt);
+                metaRow.appendChild(dot);
+                metaRow.appendChild(label);
+                metaRow.appendChild(sep);
+                metaRow.appendChild(time);
+
+                const content = document.createElement('p');
+                content.className = 'hist-content';
+                content.textContent = truncateText(item.content || '', 45);
+                info.appendChild(metaRow);
+                info.appendChild(content);
+
+                const actions = document.createElement('div');
+                actions.className = 'hist-actions';
+                const restoreBtn = document.createElement('button');
+                restoreBtn.className = 'hist-restore';
+                restoreBtn.textContent = 'Restore';
+                const deleteBtn = document.createElement('button');
+                deleteBtn.className = 'hist-delete';
+                deleteBtn.textContent = 'x';
+                actions.appendChild(restoreBtn);
+                actions.appendChild(deleteBtn);
+
+                entry.appendChild(thumb);
+                entry.appendChild(info);
+                entry.appendChild(actions);
+
+                restoreBtn.addEventListener('click', () => {
+                    restoreHistoryItem(item.id);
+                });
+                deleteBtn.addEventListener('click', () => {
+                    deleteHistoryItem(item.id);
+                });
+                list.appendChild(entry);
+            });
+        }
+
+        function deleteHistoryItem(id) {
+            const stored = getStoredHistory();
+            const next = stored.filter((item) => item.id !== id);
+            setStoredHistory(next);
+            const entry = document.querySelector('.history-item[data-id="' + id + '"]');
+            if (entry) {
+                entry.classList.add('removing');
+                setTimeout(() => renderHistoryItems(next), 300);
+            } else {
+                renderHistoryItems(next);
+            }
+        }
+
+        function restoreHistoryItem(id) {
+            const stored = getStoredHistory();
+            const item = stored.find((entry) => entry.id === id);
+            if (!item) {
+                return;
+            }
+            currentCategory = item.category;
+            const meta = categoryMeta[item.category] || {};
+            currentCategoryColor = meta.color || currentCategoryColor;
+            selectCategoryById(item.category);
+            renderForm(item.category);
+            setTimeout(() => {
+                applyHistoryContent(item.category, item.content);
+                applyCustomization(item.customization);
+            }, 200);
+            closeDrawer();
+            document.getElementById('form-section').scrollIntoView({ behavior: 'smooth' });
+        }
+
+        function applyHistoryContent(categoryId, content) {
+            if (!content) {
+                return;
+            }
+            if (categoryId === 'text') {
+                const field = document.getElementById('f-text');
+                if (field) field.value = content;
+            }
+            if (categoryId === 'url') {
+                const field = document.getElementById('f-url');
+                if (field) field.value = content;
+            }
+            if (categoryId === 'instagram') {
+                const field = document.getElementById('f-ig');
+                if (field) field.value = content.replace('https://instagram.com/', '');
+            }
+            if (categoryId === 'twitter') {
+                const field = document.getElementById('f-tw');
+                if (field) field.value = content.replace('https://twitter.com/', '');
+            }
+            if (categoryId === 'linkedin') {
+                const field = document.getElementById('f-li');
+                if (field) field.value = content.replace('https://linkedin.com/in/', '');
+            }
+            if (categoryId === 'whatsapp') {
+                const phoneField = document.getElementById('f-wa-phone');
+                const msgField = document.getElementById('f-wa-msg');
+                const match = content.match(/^https:\/\/wa\.me\/(\d+)(?:\?text=(.*))?/);
+                if (match) {
+                    if (phoneField) phoneField.value = '+' + match[1];
+                    if (msgField) msgField.value = match[2] ? decodeURIComponent(match[2]) : '';
+                }
+            }
+            if (categoryId === 'phone') {
+                const field = document.getElementById('f-phone');
+                if (field) field.value = content.replace('tel:', '');
+            }
+            if (categoryId === 'sms') {
+                const phoneField = document.getElementById('f-sms-phone');
+                const msgField = document.getElementById('f-sms-msg');
+                const parts = content.replace('sms:', '').split('?body=');
+                if (phoneField) phoneField.value = parts[0] || '';
+                if (msgField && parts[1]) msgField.value = decodeURIComponent(parts[1]);
+            }
+            if (categoryId === 'email') {
+                const toField = document.getElementById('f-em-to');
+                const subField = document.getElementById('f-em-sub');
+                const bodyField = document.getElementById('f-em-body');
+                const mail = content.replace('mailto:', '');
+                const parts = mail.split('?');
+                const params = new URLSearchParams(parts[1] || '');
+                if (toField) toField.value = parts[0] || '';
+                if (subField) subField.value = params.get('subject') ? decodeURIComponent(params.get('subject')) : '';
+                if (bodyField) bodyField.value = params.get('body') ? decodeURIComponent(params.get('body')) : '';
+            }
+            if (categoryId === 'wifi') {
+                const match = content.match(/WIFI:T:(.*?);S:(.*?);P:(.*?);H:(.*?);;/);
+                if (match) {
+                    const sec = document.getElementById('f-wifi-sec');
+                    const ssid = document.getElementById('f-wifi-ssid');
+                    const pass = document.getElementById('f-wifi-pass');
+                    const hidden = document.getElementById('f-wifi-hidden');
+                    if (sec) sec.value = match[1] || 'WPA';
+                    if (ssid) ssid.value = match[2] || '';
+                    if (pass) pass.value = match[3] || '';
+                    if (hidden) hidden.checked = match[4] === 'true';
+                }
+            }
+            if (categoryId === 'location') {
+                const coords = content.replace('geo:', '').split(',');
+                const lat = document.getElementById('f-lat');
+                const lng = document.getElementById('f-lng');
+                if (lat) lat.value = coords[0] || '';
+                if (lng) lng.value = coords[1] || '';
+            }
+            if (categoryId === 'youtube') {
+                const field = document.getElementById('f-yt');
+                if (field) field.value = content;
+            }
+            if (categoryId === 'image') {
+                const field = document.getElementById('f-image-url');
+                const preview = document.querySelector('#img-preview img');
+                const previewWrap = document.getElementById('img-preview');
+                if (field && /^https?:\/\//i.test(content)) {
+                    field.value = content;
+                    if (preview && previewWrap) {
+                        preview.src = content;
+                        previewWrap.style.display = 'block';
+                    }
+                }
+            }
+            if (categoryId === 'file') {
+                const field = document.getElementById('f-file-url');
+                const info = document.getElementById('file-info');
+                if (field && /^https?:\/\//i.test(content)) {
+                    field.value = content;
+                    if (info) {
+                        info.textContent = content;
+                        info.style.display = 'block';
+                    }
+                }
+            }
+            if (categoryId === 'vcard' || categoryId === 'bizcard') {
+                const lines = content.split('\n');
+                const data = {};
+                lines.forEach((line) => {
+                    const parts = line.split(':');
+                    if (parts.length >= 2) {
+                        data[parts[0]] = parts.slice(1).join(':');
+                    }
+                });
+                if (categoryId === 'vcard') {
+                    const fn = document.getElementById('f-vc-fn');
+                    const ln = document.getElementById('f-vc-ln');
+                    if (data.FN) {
+                        const nameParts = data.FN.split(' ');
+                        if (fn) fn.value = nameParts[0] || '';
+                        if (ln) ln.value = nameParts.slice(1).join(' ');
+                    }
+                    const phone = document.getElementById('f-vc-phone');
+                    const email = document.getElementById('f-vc-email');
+                    const org = document.getElementById('f-vc-org');
+                    const web = document.getElementById('f-vc-web');
+                    if (phone) phone.value = data.TEL || '';
+                    if (email) email.value = data.EMAIL || '';
+                    if (org) org.value = data.ORG || '';
+                    if (web) web.value = data.URL || '';
+                }
+                if (categoryId === 'bizcard') {
+                    const name = document.getElementById('f-biz-name');
+                    const title = document.getElementById('f-biz-title');
+                    const company = document.getElementById('f-biz-co');
+                    const phone = document.getElementById('f-biz-phone');
+                    const email = document.getElementById('f-biz-email');
+                    const web = document.getElementById('f-biz-web');
+                    const addr = document.getElementById('f-biz-addr');
+                    if (name) name.value = data.FN || '';
+                    if (title) title.value = data.TITLE || '';
+                    if (company) company.value = data.ORG || '';
+                    if (phone) phone.value = data.TEL || '';
+                    if (email) email.value = data.EMAIL || '';
+                    if (web) web.value = data.URL || '';
+                    if (addr) addr.value = data.ADR || '';
+                }
+            }
+        }
+
+        function applyCustomization(customization) {
+            if (!customization) {
+                return;
+            }
+            const fg = document.getElementById('qr-fg');
+            const bg = document.getElementById('qr-bg');
+            const size = document.getElementById('qr-size');
+            const sizeLabel = document.getElementById('size-label');
+            if (fg) fg.value = customization.fgColor || '#000000';
+            if (bg) bg.value = customization.bgColor || '#ffffff';
+            if (size) {
+                size.value = customization.size || 256;
+                sizeLabel.textContent = size.value;
+            }
+            const eccButtons = document.querySelectorAll('.ecc-btn');
+            eccButtons.forEach((btn) => {
+                btn.classList.toggle('active', btn.textContent === customization.errorLevel);
+            });
+        }
+
+        function openDrawer() {
+            document.querySelector('.drawer-panel').classList.add('open');
+            document.querySelector('.drawer-overlay').classList.add('open');
+        }
+
+        function closeDrawer() {
+            document.querySelector('.drawer-panel').classList.remove('open');
+            document.querySelector('.drawer-overlay').classList.remove('open');
+        }
+
+        function formatRelativeTime(timestamp) {
+            const diff = Date.now() - timestamp;
+            const minutes = Math.floor(diff / 60000);
+            if (minutes < 1) return 'just now';
+            if (minutes < 60) return minutes + 'm ago';
+            const hours = Math.floor(minutes / 60);
+            if (hours < 24) return hours + 'h ago';
+            const days = Math.floor(hours / 24);
+            return days + 'd ago';
+        }
+
+        function initScanner() {
+            if (scanRunning) {
+                return;
+            }
+            const video = document.getElementById('scanner-video');
+            const canvas = document.getElementById('scanner-canvas');
+            const errorBox = document.getElementById('scanner-error');
+            const stopButton = document.getElementById('stop-scanner');
+            const startButton = document.getElementById('start-scanner');
+            const resultBox = document.getElementById('scan-result');
+
+            navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment', width: { ideal: 1280 } } })
+                .then((stream) => {
+                    scanStream = stream;
+                    scanRunning = true;
+                    video.srcObject = stream;
+                    video.play();
+                    video.addEventListener('loadedmetadata', () => {
+                        canvas.width = video.videoWidth;
+                        canvas.height = video.videoHeight;
+                        scanLoop();
+                    }, { once: true });
+                    stopButton.style.display = 'inline-block';
+                    startButton.style.display = 'none';
+                    errorBox.style.display = 'none';
+                    resultBox.style.display = 'none';
+                })
+                .catch((err) => {
+                    scanRunning = false;
+                    if (err.name === 'NotAllowedError') {
+                        errorBox.textContent = 'Camera permission denied. Please allow camera access and try again.';
+                    } else if (err.name === 'NotFoundError') {
+                        errorBox.textContent = 'No camera found on this device.';
+                    } else {
+                        errorBox.textContent = 'Could not access camera: ' + err.message;
+                    }
+                    errorBox.style.display = 'block';
+                });
+        }
+
+        function scanLoop() {
+            if (!scanRunning) {
+                return;
+            }
+            const video = document.getElementById('scanner-video');
+            const canvas = document.getElementById('scanner-canvas');
+            const ctx = canvas.getContext('2d');
+            ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+            const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+            const code = jsQR(imageData.data, imageData.width, imageData.height);
+            if (code && code.data) {
+                lastScanData = code.data;
+                stopScanner();
+                const resultBox = document.getElementById('scan-result');
+                const content = document.getElementById('result-content');
+                const openButton = document.getElementById('result-open');
+                content.textContent = code.data;
+                resultBox.style.display = 'block';
+                const wrapper = document.querySelector('.video-wrapper');
+                wrapper.classList.add('scan-success');
+                setTimeout(() => wrapper.classList.remove('scan-success'), 500);
+                if (code.data.startsWith('http')) {
+                    openButton.style.display = 'inline-block';
+                } else {
+                    openButton.style.display = 'none';
+                }
+                const rect = wrapper.getBoundingClientRect();
+                burstParticles(rect.left + rect.width / 2, rect.top + rect.height / 2, currentCategoryColor);
+                showToast('QR decoded', 'success');
+                return;
+            }
+            requestAnimationFrame(scanLoop);
+        }
+
+        function stopScanner() {
+            if (scanStream) {
+                scanStream.getTracks().forEach((track) => track.stop());
+                scanStream = null;
+            }
+            scanRunning = false;
+            const video = document.getElementById('scanner-video');
+            video.srcObject = null;
+            document.getElementById('stop-scanner').style.display = 'none';
+            document.getElementById('start-scanner').style.display = 'inline-block';
+        }
+
+        function launchFlyingEmoji(symbol, startX, startY) {
+            const emoji = document.createElement('div');
+            emoji.className = 'flying-emoji';
+            emoji.textContent = symbol;
+            emoji.style.left = startX + 'px';
+            emoji.style.top = startY + 'px';
+            document.body.appendChild(emoji);
+
+            let x = startX;
+            let y = startY;
+            let vx = 4 + Math.random() * 4;
+            let vy = -6 - Math.random() * 4;
+            let opacity = 1;
+
+            const animate = () => {
+                x += vx;
+                y += vy;
+                vy += 0.3;
+                if (opacity < 1 && opacity > 0) {
+                    opacity -= 0.02;
+                }
+                if (y < startY - 60) {
+                    opacity -= 0.02;
+                }
+                emoji.style.transform = 'translate(' + (x - startX) + 'px,' + (y - startY) + 'px)';
+                emoji.style.opacity = Math.max(opacity, 0);
+                if (opacity <= 0 || y > window.innerHeight + 40) {
+                    emoji.remove();
+                    return;
+                }
+                requestAnimationFrame(animate);
+            };
+
+            animate();
+        }
+
+        function initSurprises() {
+            const categorySymbols = {
+                text: '*',
+                url: 'o',
+                instagram: '#',
+                whatsapp: '+',
+                email: '@',
+                phone: '+',
+                sms: '^',
+                wifi: '~',
+                vcard: '=',
+                location: '*',
+                youtube: '>',
+                image: '[]',
+                file: '<>',
+                twitter: '~',
+                linkedin: '+',
+                bizcard: '$'
+            };
+
+            let charCounter = 0;
+            document.addEventListener('input', (event) => {
+                if (!event.target.closest('#form-section')) {
+                    return;
+                }
+                charCounter += 1;
+                if (charCounter >= 20) {
+                    const rect = event.target.getBoundingClientRect();
+                    launchFlyingEmoji(categorySymbols[currentCategory] || '*', rect.right, rect.top);
+                    charCounter = 0;
+                }
+            });
+
+            const updateInteraction = () => {
+                lastInteraction = Date.now();
+                if (isRaining) {
+                    stopRain();
+                }
+            };
+
+            ['mousemove', 'keydown', 'click', 'touchstart'].forEach((evt) => {
+                document.addEventListener(evt, updateInteraction);
+            });
+
+            setInterval(() => {
+                const qrContainer = document.getElementById('qr-container');
+                if (Date.now() - lastInteraction > 12000 && qrContainer.classList.contains('revealed') && !isRaining) {
+                    startRain();
+                }
+            }, 500);
+
+            enableMagneticButtons();
+        }
+
+        function startRain() {
+            isRaining = true;
+            const rain = document.createElement('div');
+            rain.className = 'qr-rain';
+            rain.id = 'qr-rain';
+            document.body.appendChild(rain);
+            let count = 0;
+            rainInterval = setInterval(() => {
+                const square = document.createElement('div');
+                square.className = 'rain-sq';
+                const size = 5 + Math.random() * 7;
+                square.style.width = size + 'px';
+                square.style.height = size + 'px';
+                square.style.left = Math.random() * 100 + 'vw';
+                square.style.background = currentCategoryColor;
+                square.style.animationDuration = 3 + Math.random() * 3 + 's';
+                rain.appendChild(square);
+                count += 1;
+                if (count > 35) {
+                    rain.removeChild(rain.firstChild);
+                }
+            }, 300);
+        }
+
+        function stopRain() {
+            isRaining = false;
+            const rain = document.getElementById('qr-rain');
+            if (rain) {
+                rain.style.opacity = '0';
+                rain.style.transition = 'opacity 0.5s';
+                setTimeout(() => {
+                    rain.remove();
+                }, 500);
+            }
+            if (rainInterval) {
+                clearInterval(rainInterval);
+                rainInterval = null;
+            }
+        }
+
+        function enableMagneticButtons() {
+            if (isTouchDevice) {
+                return;
+            }
+            const targets = document.querySelectorAll('#hero-cta, #generate-btn, .dl-btn');
+            targets.forEach((el) => {
+                if (el.dataset.magnet) {
+                    return;
+                }
+                el.dataset.magnet = 'true';
+                el.addEventListener('mousemove', (event) => {
+                    const rect = el.getBoundingClientRect();
+                    const dx = event.clientX - (rect.left + rect.width / 2);
+                    const dy = event.clientY - (rect.top + rect.height / 2);
+                    el.style.transform = 'translate(' + dx * 0.25 + 'px,' + dy * 0.25 + 'px)';
+                });
+                el.addEventListener('mouseleave', () => {
+                    el.style.transition = 'transform 0.3s var(--transition-spring)';
+                    el.style.transform = 'translate(0,0)';
+                    setTimeout(() => {
+                        el.style.transition = '';
+                    }, 300);
+                });
+            });
+        }
+
+        function applyTouchSettings() {
+            if (!isTouchDevice) {
+                return;
+            }
+            document.body.classList.add('touch-mode');
+            const dot = document.getElementById('cursor-dot');
+            const ring = document.getElementById('cursor-ring');
+            dot.style.display = 'none';
+            ring.style.display = 'none';
+            const cards = document.querySelectorAll('.category-card');
+            cards.forEach((card) => {
+                card.addEventListener('touchstart', () => {
+                    card.classList.add('touch-active');
+                });
+                card.addEventListener('touchend', () => {
+                    setTimeout(() => card.classList.remove('touch-active'), 150);
+                });
+            });
+        }
+
+        function initGlobalActions() {
+            document.querySelector('.change-category').addEventListener('click', () => {
+                const formSection = document.getElementById('form-section');
+                const categorySection = document.getElementById('category-section');
+                formSection.style.display = 'none';
+                categorySection.style.display = 'block';
+                categorySection.scrollIntoView({ behavior: 'smooth' });
+            });
+
+            const optionsToggle = document.querySelector('.qr-options-toggle');
+            const optionsBody = document.querySelector('.qr-options-body');
+            optionsToggle.addEventListener('click', () => {
+                optionsBody.classList.toggle('open');
+                optionsToggle.textContent = optionsBody.classList.contains('open') ? 'Customize QR ^' : 'Customize QR';
+            });
+
+            const eccButtons = document.querySelectorAll('.ecc-btn');
+            eccButtons.forEach((btn) => {
+                btn.addEventListener('click', () => {
+                    eccButtons.forEach((b) => b.classList.remove('active'));
+                    btn.classList.add('active');
+                });
+            });
+
+            const sizeInput = document.getElementById('qr-size');
+            const sizeLabel = document.getElementById('size-label');
+            sizeInput.addEventListener('input', () => {
+                sizeLabel.textContent = sizeInput.value;
+            });
+
+            const colorInputs = document.querySelectorAll('#qr-fg, #qr-bg');
+            const swatches = document.querySelectorAll('.color-swatch');
+            const syncSwatches = () => {
+                swatches.forEach((swatch) => {
+                    const id = swatch.dataset.swatch;
+                    const input = document.getElementById(id);
+                    if (input) {
+                        swatch.style.background = input.value;
+                    }
+                });
+            };
+            colorInputs.forEach((input) => {
+                input.addEventListener('input', syncSwatches);
+            });
+            syncSwatches();
+
+            document.getElementById('generate-btn').addEventListener('click', generateQR);
+            document.getElementById('make-another').addEventListener('click', () => {
+                document.getElementById('form-section').scrollIntoView({ behavior: 'smooth' });
+            });
+
+            const downloadButtons = [
+                { id: 'dl-png', handler: downloadPNG },
+                { id: 'dl-svg', handler: downloadSVG },
+                { id: 'dl-pdf', handler: downloadPDF },
+                { id: 'dl-copy', handler: copyToClipboard }
+            ];
+
+            downloadButtons.forEach((btn) => {
+                const element = document.getElementById(btn.id);
+                element.addEventListener('click', () => {
+                    const rect = element.getBoundingClientRect();
+                    launchConfetti(rect.left + rect.width / 2, rect.top + rect.height / 2, currentCategoryColor);
+                    element.classList.add('btn-pop');
+                    setTimeout(() => element.classList.remove('btn-pop'), 400);
+                    btn.handler();
+                });
+            });
+
+            document.getElementById('history-toggle').addEventListener('click', openDrawer);
+            document.getElementById('close-drawer').addEventListener('click', closeDrawer);
+            document.querySelector('.drawer-overlay').addEventListener('click', closeDrawer);
+            document.getElementById('clear-history').addEventListener('click', () => {
+                if (confirm('Clear all history?')) {
+                    clearStoredHistory();
+                    renderHistoryItems([]);
+                }
+            });
+
+            document.getElementById('start-scanner').addEventListener('click', initScanner);
+            document.getElementById('stop-scanner').addEventListener('click', stopScanner);
+            document.getElementById('result-copy').addEventListener('click', () => {
+                const text = document.getElementById('result-content').textContent;
+                navigator.clipboard.writeText(text).then(() => {
+                    showToast('Copied', 'success');
+                }).catch(() => {
+                    showToast('Copy failed', 'error');
+                });
+            });
+            document.getElementById('result-open').addEventListener('click', () => {
+                if (lastScanData && lastScanData.startsWith('http')) {
+                    window.open(lastScanData, '_blank');
+                }
+            });
+        }
+
+        function hideLoadingScreen() {
+            const loader = document.getElementById('loading-screen');
+            if (!loader || loader.dataset.hidden === '1') {
+                return;
+            }
+            loader.dataset.hidden = '1';
+            loader.classList.add('loading-hidden');
+            setTimeout(() => {
+                loader.style.display = 'none';
+            }, 700);
+        }
+
+        document.addEventListener('DOMContentLoaded', () => {
+            ensureQRCodeLibrary();
+            initBackground();
+            initHero();
+            initModeTabs();
+            initCategoryGrid();
+            initGlobalActions();
+            initSurprises();
+            applyTouchSettings();
+            loadHistory();
+            if (window.lucide) {
+                lucide.createIcons();
+            }
+            enableMagneticButtons();
+
+            // Do not wait for full window load; external CDN delays can block it.
+            setTimeout(hideLoadingScreen, 1400);
+        });
+
+        window.addEventListener('load', () => {
+            hideLoadingScreen();
+        });
+
+        // Absolute safety: if neither event path works, force-hide loader.
+        setTimeout(hideLoadingScreen, 5000);
+    </script>
+</body>
+
+</html>
